@@ -1,0 +1,84 @@
+# ==========================================================
+# HoneyChain .gitignore
+# ==========================================================
+#
+# This file tells Git which files/folders should NOT be
+# uploaded to GitHub.
+# ==========================================================
+
+
+# ----------------------------------------------------------
+# PYTHON VIRTUAL ENVIRONMENT
+# ----------------------------------------------------------
+# Contains locally installed Python packages.
+# Every teammate should create their own .venv.
+#
+.venv/
+
+
+# ----------------------------------------------------------
+# PYTHON CACHE FILES
+# ----------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+
+# ----------------------------------------------------------
+# SECRETS / ENVIRONMENT VARIABLES
+# ----------------------------------------------------------
+# Never upload passwords, API keys or tokens.
+#
+.env
+.env.*
+
+
+# ----------------------------------------------------------
+# IDE / OPERATING SYSTEM FILES
+# ----------------------------------------------------------
+.vscode/
+.DS_Store
+Thumbs.db
+
+
+# ----------------------------------------------------------
+# LARGE RAW DATASETS
+# ----------------------------------------------------------
+# Scientific datasets may be very large and should not be
+# committed directly into the source-code repository.
+#
+data/raw/
+
+
+# ----------------------------------------------------------
+# MACHINE-LEARNING MODEL FILES
+# ----------------------------------------------------------
+*.joblib
+*.pkl
+
+
+# ----------------------------------------------------------
+# DATABASE FILES
+# ----------------------------------------------------------
+# We may later use SQLite locally.
+#
+*.db
+*.sqlite
+*.sqlite3
+
+
+# ----------------------------------------------------------
+# FRONTEND / NODE FILES
+# ----------------------------------------------------------
+# These are included now so the repository stays clean if we
+# add React/Next.js later.
+#
+node_modules/
+.next/
+
+
+# ----------------------------------------------------------
+# STREAMLIT LOCAL CONFIGURATION
+# ----------------------------------------------------------
+.streamlit/secrets.toml
