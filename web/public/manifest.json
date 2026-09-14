@@ -1,0 +1,9 @@
+{
+  "name": "HoneyChain",
+  "short_name": "HoneyChain",
+  "start_url": "/?page=overview",
+  "display": "standalone",
+  "background_color": "#F5EEE3",
+  "theme_color": "#2B211B",
+  "description": "Evidence-backed honey intelligence for beekeepers."
+}

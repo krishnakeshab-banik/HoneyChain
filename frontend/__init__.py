@@ -1,0 +1,1 @@
+"""HoneyChain Streamlit frontend."""
