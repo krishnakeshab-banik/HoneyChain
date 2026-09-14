@@ -25,12 +25,15 @@ WHY THIS FILE CHANGED:
 from __future__ import annotations
 
 import logging
+import os
 import traceback
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from dotenv import load_dotenv
 
@@ -61,6 +64,37 @@ from backend.routers import (
 )
 
 logger = logging.getLogger("honeychain")
+SPA_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
+
+
+def _cors_origins() -> list[str]:
+    origins = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:8501",
+        "http://localhost:8501",
+    ]
+    extra = os.environ.get("CORS_ORIGINS", "")
+    origins.extend(item.strip().rstrip("/") for item in extra.split(",") if item.strip())
+    return origins
+
+
+def _mount_spa(application: FastAPI) -> None:
+    if not SPA_DIR.is_dir():
+        return
+    assets = SPA_DIR / "assets"
+    if assets.is_dir():
+        application.mount("/assets", StaticFiles(directory=assets), name="spa-assets")
+
+    @application.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str):
+        first = full_path.split("/", 1)[0]
+        if first in {"docs", "redoc", "openapi.json", "health", "api"}:
+            raise HTTPException(status_code=404, detail="Not found.")
+        candidate = (SPA_DIR / full_path).resolve()
+        if str(candidate).startswith(str(SPA_DIR.resolve())) and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(SPA_DIR / "index.html")
 
 
 def create_app(*, bootstrap: bool = True) -> FastAPI:
@@ -81,12 +115,8 @@ def create_app(*, bootstrap: bool = True) -> FastAPI:
     # the browser can reach FastAPI without a proxy.
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://127.0.0.1:5173",
-            "http://localhost:5173",
-            "http://127.0.0.1:8501",
-            "http://localhost:8501",
-        ],
+        allow_origins=_cors_origins(),
+        allow_origin_regex=r"https://.*\.onrender\.com",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -131,6 +161,7 @@ def create_app(*, bootstrap: bool = True) -> FastAPI:
     application.include_router(analytics.router)
     application.include_router(users.router)
     application.include_router(demo.router)
+    _mount_spa(application)
     return application
 
 
