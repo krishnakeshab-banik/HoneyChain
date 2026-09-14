@@ -8,7 +8,7 @@ export default function Insights() {
   const [hives, setHives] = useState(null);
   const [hiveId, setHiveId] = useState("");
   const [insights, setInsights] = useState(null);
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [photoNote, setPhotoNote] = useState("");
@@ -42,9 +42,9 @@ export default function Insights() {
   return (
     <div data-tour="insights">
       <PageHeader
-        kicker="INSIGHTS"
-        title="Insights"
-        purpose="Colony health from an MSPB-trained inspection-risk model, plus this hive's scale forecast. Seasonal honey kg is a separate MSPB estimate from temperature and humidity — not the live weight."
+        kicker={t("insights.kicker")}
+        title={t("insights.title")}
+        purpose={t("insights.purpose")}
       />
       {loading && <Loading label="Loading hives…" />}
       {hives && hives.length === 0 && <Banner tone="warn">No hives registered yet.</Banner>}
@@ -114,6 +114,24 @@ export default function Insights() {
           />
           {photoBusy && <Loading label="Looking at the photo…" />}
           {photoNote && <Banner tone="info">{photoNote}</Banner>}
+          <h2>Input feature vector</h2>
+          <p className="muted">Exact values sent into the live models for this hive. Nothing in the inference step is hidden.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {featureRows.map((row) => (
+                <tr key={row.feature}>
+                  <td>{row.feature}</td>
+                  <td>{Number(row.value).toFixed(4)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <h2>Features fed to the models</h2>
           <LineChart rows={featureRows} xKey="feature" yKeys={["value"]} labels={["Feature value"]} />
           <h2>Measured vs forecast hive weight</h2>

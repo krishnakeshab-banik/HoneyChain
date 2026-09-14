@@ -130,6 +130,7 @@ async function main() {
   }
   await page.fill("#batch_id", `BT-UI-${stamp}`);
   await page.fill("#declared", "6.2");
+  await page.selectOption("#lab", "pass").catch(() => {});
   await page.getByRole("button", { name: "Create draft batch" }).click();
   await page.waitForTimeout(800);
   await page.selectOption("#commit", `BT-UI-${stamp}`).catch(() => {});

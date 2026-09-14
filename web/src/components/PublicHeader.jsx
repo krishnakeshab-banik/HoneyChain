@@ -13,18 +13,23 @@ export default function PublicHeader() {
         <span className="muted">{t("brand.tagline")}</span>
       </Link>
       <button type="button" className="ghost menu-toggle" onClick={() => setOpen((value) => !value)}>
-        Menu
+        {t("nav.menu")}
       </button>
       <nav className={`public-links ${open ? "open" : ""}`} aria-label="Public">
         <NavLink to="/" end>
           {t("nav.home")}
         </NavLink>
         <NavLink to="/how-it-works">{t("nav.how")}</NavLink>
+        <NavLink to="/model">{t("nav.model")}</NavLink>
         <NavLink to="/verify">{t("nav.verifyHoney")}</NavLink>
         <NavLink to="/market">{t("nav.marketPublic")}</NavLink>
+        <NavLink to="/staff">{t("nav.staff")}</NavLink>
       </nav>
       <div className="public-actions">
         <LanguageSelect id="public-lang" />
+        <Link className="ghost staff-entry" to="/staff">
+          {t("nav.admin")}
+        </Link>
         <Link className="ghost" to="/login">
           {t("nav.login")}
         </Link>

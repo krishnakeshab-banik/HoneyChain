@@ -87,7 +87,7 @@ export default function LabDesk() {
               notes: form.notes,
             });
             await refresh();
-            setNotice(t("lab.saved"));
+            setNotice(`${t("lab.saved")} ${form.batch_id} → ${form.result}.`);
           } catch (err) {
             setError(err.message);
           } finally {
@@ -98,11 +98,25 @@ export default function LabDesk() {
         <div className="grid-2">
           <div>
             <label htmlFor="lab_batch">{t("market.batchId")}</label>
-            <input
-              id="lab_batch"
-              value={form.batch_id}
-              onChange={(event) => setForm((prev) => ({ ...prev, batch_id: event.target.value }))}
-            />
+            {queue.length > 0 ? (
+              <select
+                id="lab_batch"
+                value={form.batch_id}
+                onChange={(event) => setForm((prev) => ({ ...prev, batch_id: event.target.value }))}
+              >
+                {queue.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="lab_batch"
+                value={form.batch_id}
+                onChange={(event) => setForm((prev) => ({ ...prev, batch_id: event.target.value }))}
+              />
+            )}
           </div>
           <div>
             <label htmlFor="moisture_pct">{t("lab.moisture")}</label>

@@ -103,9 +103,13 @@ Served models therefore train only on temperature/humidity summaries (`mean`, `s
 
 D1 and D2 can share hive `tag_number`s across seasons. Combined rows keep both, distinguished by `source`.
 
+## Evaluation methodology
+
+`ml/train_mspb.py` uses `train_test_split(test_size=0.25, random_state=42)`, stratified on the health label. The joblib artifacts are fit on the **training** rows only. `ml/artifacts/mspb_metrics.json` is computed on the held-out test rows. The app never displays paper-copied or training-set scores.
+
 ## Model-fit notes (not hidden)
 
-Retrained on this table: 97 hive-season rows (53 D1 + 44 D2). Health 5-fold accuracy was about 0.45 — the labels come from phenotypes/mortality, while the served features are only climate summaries, and D1/D2 seasons have very different temperature ranges (~33 °C vs ~19 °C). Yield 5-fold R² on 46 D1 honey rows was negative. The models still ship as specified; treat scores as inspection-risk / coarse yield estimates, not strong predictors.
+Held-out 25% test (n_health=25, n_yield=12): health accuracy 0.40, honey RMSE ~17.6 kg. Climate summaries are a weak proxy for phenotypic labels. The models still ship as specified; treat scores as inspection-risk / coarse yield estimates, not strong predictors.
 
 ## How to rebuild
 

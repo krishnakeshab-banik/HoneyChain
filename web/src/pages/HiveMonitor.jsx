@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiGet, apiSend } from "../api";
 import LineChart from "../components/LineChart";
 import { Banner, HiveSelect, Loading, Metric, PageHeader } from "../components/Ui";
 
 export default function HiveMonitor() {
+  const { t } = useTranslation();
   const [hives, setHives] = useState(null);
   const [hiveId, setHiveId] = useState("");
   const [readings, setReadings] = useState(null);
@@ -41,11 +43,10 @@ export default function HiveMonitor() {
   return (
     <div>
       <PageHeader
-        kicker="HIVE MONITOR"
-        title="Hive Monitor"
-        purpose="Watch the full sensor history for one hive. Charts are drawn from GET /api/hives/{id}/sensor-readings and refresh every five seconds."
+        kicker={t("monitor.kicker")}
+        title={t("monitor.title")}
+        purpose={t("monitor.purpose")}
       />
-      {loading && <Loading label="Loading hives…" />}
       {error && (
         <Banner tone="bad">
           Couldn't load hive telemetry — {error}{" "}
@@ -54,12 +55,11 @@ export default function HiveMonitor() {
           </button>
         </Banner>
       )}
-      {hives && hives.length === 0 && <Banner tone="warn">No hives registered yet. Register one on Overview.</Banner>}
-      {hives && hives.length > 0 && (
-        <div data-tour="hive-select">
-          <HiveSelect hives={hives} value={hiveId} onChange={setHiveId} id="monitor-hive" />
-        </div>
-      )}
+      <div data-tour="hive-select">
+        {loading && <Loading label="Loading hives…" />}
+        {hives && hives.length === 0 && <Banner tone="warn">No hives registered yet. Register one on Overview.</Banner>}
+        {hives && hives.length > 0 && <HiveSelect hives={hives} value={hiveId} onChange={setHiveId} id="monitor-hive" />}
+      </div>
       {hiveId && readings === null && !error && <Loading label="Loading telemetry…" />}
 
       {readings && readings.length === 0 && (

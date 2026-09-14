@@ -16,7 +16,7 @@ export default function TourOffer() {
   return (
     <div className="card tour-offer">
       <strong>Take a short walkthrough?</strong>
-      <p className="muted">We will highlight the real buttons on your own screens. You can skip at any time.</p>
+      <p className="muted">We will highlight the real buttons on your own screens and read each step aloud in the language you selected. You can skip at any time.</p>
       <div className="row">
         <button className="primary" type="button" onClick={() => startTour(role)}>
           Start tour

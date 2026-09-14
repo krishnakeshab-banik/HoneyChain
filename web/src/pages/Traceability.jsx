@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiGet, apiSend, qrImageUrl } from "../api";
 import { Banner, DataTable, Loading, PageHeader } from "../components/Ui";
 
@@ -6,7 +7,12 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function freshId(prefix) {
+  return `${prefix}-${Date.now().toString().slice(-6)}`;
+}
+
 export default function Traceability({ role = "admin" }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -18,24 +24,25 @@ export default function Traceability({ role = "admin" }) {
   const [chain, setChain] = useState([]);
   const [integrity, setIntegrity] = useState(null);
   const [harvestForm, setHarvestForm] = useState({
-    harvest_id: "HV-WEB-001",
+    harvest_id: freshId("HV"),
     hive_id: "IN-WB-001",
     beekeeper_id: "BK-WB-01",
     raw_weight_kg: 6.5,
     moisture_pct: 17.2,
   });
   const [batchForm, setBatchForm] = useState({
-    batch_id: "BT-WEB-001",
+    batch_id: freshId("BT"),
     harvest_ids: [],
     declared_weight_kg: 6.5,
-    lab_test_result: "pass",
-    lab_notes: "Moisture and HMF within spec.",
+    lab_test_result: "pending",
+    lab_notes: "",
   });
   const [commitId, setCommitId] = useState("");
   const [packageForm, setPackageForm] = useState({
-    package_id: "PK-WEB-001",
+    package_id: freshId("PK"),
     batch_id: "",
   });
+  const [issuedPackage, setIssuedPackage] = useState(null);
 
   const refresh = useCallback(async () => {
     const [nextHives, nextKeepers, nextHarvests, nextBatches, nextPackages, nextChain, nextIntegrity] =
@@ -60,10 +67,16 @@ export default function Traceability({ role = "admin" }) {
       hive_id: prev.hive_id || nextHives[0]?.hive_id || "",
       beekeeper_id: prev.beekeeper_id || nextKeepers[0]?.beekeeper_id || "",
     }));
-    setPackageForm((prev) => ({
-      ...prev,
-      batch_id: prev.batch_id || nextBatches.find((item) => item.status === "committed")?.batch_id || "",
-    }));
+    setPackageForm((prev) => {
+      const stillValid = nextBatches.some((item) => item.batch_id === prev.batch_id && item.status === "committed");
+      if (stillValid) {
+        return prev;
+      }
+      return {
+        ...prev,
+        batch_id: nextBatches.find((item) => item.status === "committed")?.batch_id || "",
+      };
+    });
   }, []);
 
   useEffect(() => {
@@ -93,9 +106,9 @@ export default function Traceability({ role = "admin" }) {
   return (
     <div>
       <PageHeader
-        kicker="TRACEABILITY"
-        title="Traceability"
-        purpose="Register a harvest, assemble a batch, run the weight oracle, commit a passing batch to the hash-chain, and issue a package QR."
+        kicker={t("trace.kicker")}
+        title={t("trace.title")}
+        purpose={t("trace.purpose")}
       />
       {loading && <Loading label="Loading harvests, batches, and ledger…" />}
       {error && (
@@ -122,6 +135,12 @@ export default function Traceability({ role = "admin" }) {
               raw_weight_kg: Number(harvestForm.raw_weight_kg),
               moisture_pct: Number(harvestForm.moisture_pct),
             });
+            setHarvestForm((prev) => ({ ...prev, harvest_id: freshId("HV") }));
+            setBatchForm((prev) => ({
+              ...prev,
+              harvest_ids: [created.harvest_id],
+              declared_weight_kg: created.sensor_logged_weight_kg || prev.declared_weight_kg,
+            }));
             return `Harvest ${created.harvest_id} stored. Sensor-logged weight ${created.sensor_logged_weight_kg} kg.`;
           });
         }}
@@ -220,6 +239,7 @@ export default function Traceability({ role = "admin" }) {
               lab_notes: batchForm.lab_notes,
             });
             setCommitId(created.batch_id);
+            setBatchForm((prev) => ({ ...prev, batch_id: freshId("BT"), harvest_ids: [] }));
             return `Draft batch ${created.batch_id} created.`;
           });
         }}
@@ -250,10 +270,11 @@ export default function Traceability({ role = "admin" }) {
               value={batchForm.lab_test_result}
               onChange={(event) => setBatchForm((prev) => ({ ...prev, lab_test_result: event.target.value }))}
             >
-              <option value="pass">pass</option>
+              <option value="pending">pending — send to Lab desk</option>
+              <option value="pass">pass — already inspected</option>
               <option value="fail">fail</option>
-              <option value="pending">pending</option>
             </select>
+            <p className="muted">Pending drafts appear on the Lab desk. Oracle commit requires a recorded pass.</p>
           </div>
           <div>
             <label htmlFor="notes">Lab notes</label>
@@ -323,7 +344,25 @@ export default function Traceability({ role = "admin" }) {
             onClick={() =>
               run(async () => {
                 const result = await apiSend("POST", `/api/batches/${commitId}/commit`);
-                return `Batch ${result.batch_id} committed. ${result.oracle_reason}`;
+                const packageId = `PK-${result.batch_id}`.slice(0, 50);
+                let issued;
+                try {
+                  issued = await apiSend("POST", "/api/packages", {
+                    package_id: packageId,
+                    batch_id: result.batch_id,
+                    verify_base_url: `${window.location.origin}/verify`,
+                  });
+                } catch {
+                  issued = await apiSend("POST", "/api/packages", {
+                    package_id: freshId("PK"),
+                    batch_id: result.batch_id,
+                    verify_base_url: `${window.location.origin}/verify`,
+                  });
+                }
+                setIssuedPackage(issued);
+                setPackageForm({ package_id: freshId("PK"), batch_id: result.batch_id });
+                setCommitId("");
+                return `Batch ${result.batch_id} committed. Package ${issued.package_id} issued. Open /verify?package_id=${issued.package_id}`;
               })
             }
           >
@@ -333,7 +372,19 @@ export default function Traceability({ role = "admin" }) {
       </div>
 
       </>)}
-      {canBatch && <h2>3. Issue a package QR</h2>}
+      {issuedPackage && (
+        <div className="card" data-testid="issued-package">
+          <p className="page-kicker">JUST ISSUED</p>
+          <strong>{issuedPackage.package_id}</strong>
+          <p>
+            Batch {issuedPackage.batch_id}. Scan URL:{" "}
+            <a href={`/verify?package_id=${encodeURIComponent(issuedPackage.package_id)}`}>
+              /verify?package_id={issuedPackage.package_id}
+            </a>
+          </p>
+          <img className="qr" alt={`QR for ${issuedPackage.package_id}`} src={qrImageUrl(issuedPackage.package_id)} />
+        </div>
+      )}
       {canBatch && (<>
       <form
         className="card"
@@ -345,6 +396,8 @@ export default function Traceability({ role = "admin" }) {
               batch_id: packageForm.batch_id,
               verify_base_url: `${window.location.origin}/verify`,
             });
+            setIssuedPackage(created);
+            setPackageForm((prev) => ({ ...prev, package_id: freshId("PK") }));
             return `Package ${created.package_id} ready. Scan URL: ${created.qr_reference}`;
           });
         }}

@@ -8,12 +8,12 @@ import { HeroHive, HexIcon, IconChain, IconHive, IconLang, IconMarket, IconQr, I
 import { Banner, Loading } from "../components/Ui";
 
 const FEATURES = [
-  ["Blockchain Traceability", "Every passing batch is sealed on a hash-chain so a jar can be checked later.", IconChain],
-  ["IoT Hive Monitoring", "Weight, heat, and humidity from the colony — used to corroborate harvests.", IconSensor],
-  ["AI Disease & Yield Prediction", "Health and honey-yield models trained on inspected MSPB hive-season rows; live weight stays on this hive's scale.", IconYield],
-  ["QR Consumer Verification", "Scan a jar. No account. The page recomputes ledger status live.", IconQr],
-  ["Market Linkage", "Standing demand and recent verified sale prices, not only a middleman’s word.", IconMarket],
-  ["Multilingual Access", "English plus six Indian languages. IDs and hashes stay untranslated.", IconLang],
+  ["featureChain", "featureChainBody", IconChain],
+  ["featureIot", "featureIotBody", IconSensor],
+  ["featureAi", "featureAiBody", IconYield],
+  ["featureQr", "featureQrBody", IconQr],
+  ["featureMarket", "featureMarketBody", IconMarket],
+  ["featureLang", "featureLangBody", IconLang],
 ];
 
 export default function Home() {
@@ -47,7 +47,7 @@ export default function Home() {
             <Link className="ghost" to="/login?intent=beekeeper">
               {t("home.ctaBeekeeper")}
             </Link>
-            <Link className="ghost" to="/login?intent=officer">
+            <Link className="ghost" to="/staff">
               {t("home.ctaOfficer")}
             </Link>
           </div>
@@ -69,16 +69,10 @@ export default function Home() {
       </section>
 
       <section className="card problem-card">
-        <p className="page-kicker">THE PROBLEM</p>
-        <h2>Counterfeit jars, thin trust, and weak market access</h2>
-        <p>
-          Buyers cannot tell honest honey from adulterated product. Beekeepers rarely see a fair price. Field officers
-          cannot prove a batch’s path from hive to shop.
-        </p>
-        <p>
-          HoneyChain answers each gap: hive sensors corroborate harvests, a hash-chain seals a passing batch, a QR
-          lets anyone verify a jar, and a demand board shows real prices.
-        </p>
+        <p className="page-kicker">{t("home.problemKicker")}</p>
+        <h2>{t("home.problemTitle")}</h2>
+        <p>{t("home.problemBody1")}</p>
+        <p>{t("home.problemBody2")}</p>
       </section>
 
       <section className="mission-split">
@@ -101,21 +95,21 @@ export default function Home() {
         </div>
       </section>
 
-      <p className="page-kicker">CAPABILITIES</p>
-      <h2>What HoneyChain does</h2>
+      <p className="page-kicker">{t("home.capabilitiesKicker")}</p>
+      <h2>{t("home.capabilitiesTitle")}</h2>
       <div className="grid-3 feature-grid">
         {FEATURES.map(([title, body, Icon]) => (
           <div className="card lift-card" key={title}>
             <HexIcon>
               <Icon />
             </HexIcon>
-            <strong>{title}</strong>
-            <p className="muted">{body}</p>
+            <strong>{t(`home.${title}`)}</strong>
+            <p className="muted">{t(`home.${body}`)}</p>
           </div>
         ))}
       </div>
 
-      <p className="page-kicker">PROCESS</p>
+      <p className="page-kicker">{t("home.processKicker")}</p>
       <h2>{t("home.howTitle")}</h2>
       <div className="grid-4 how-grid">
         {[
@@ -132,7 +126,7 @@ export default function Home() {
         ))}
       </div>
 
-      <p className="page-kicker">LIVE</p>
+      <p className="page-kicker">{t("home.liveKicker")}</p>
       <h2>{t("home.trustTitle")}</h2>
       {loading && <Loading label={t("home.loadingStats")} />}
       {error && (
@@ -168,7 +162,7 @@ export default function Home() {
 
       {impact?.points && (
         <>
-          <p className="page-kicker">IMPACT</p>
+          <p className="page-kicker">{t("home.impactKicker")}</p>
           <h2>{t("home.impactTitle")}</h2>
           <div className="card">
             <table>
@@ -200,22 +194,22 @@ export default function Home() {
           <HexIcon>
             <IconHive />
           </HexIcon>
-          <h3>I'm a beekeeper</h3>
-          <p className="muted">Create an account, see your own hives, and log a harvest in plain language.</p>
+          <h3>{t("home.personaBeekeeper")}</h3>
+          <p className="muted">{t("home.personaBeekeeperBody")}</p>
         </Link>
-        <Link className="card lift-card" to="/login?intent=officer">
+        <Link className="card lift-card" to="/staff">
           <HexIcon>
             <IconChain />
           </HexIcon>
-          <h3>I'm a KVIC officer</h3>
-          <p className="muted">Sign in with the account an admin created for your cluster.</p>
+          <h3>{t("home.personaOfficer")}</h3>
+          <p className="muted">{t("home.personaOfficerBody")}</p>
         </Link>
         <Link className="card lift-card" to="/verify">
           <HexIcon>
             <IconQr />
           </HexIcon>
-          <h3>I'm checking a jar</h3>
-          <p className="muted">No login. Scan the QR or type a package or batch ID.</p>
+          <h3>{t("home.personaConsumer")}</h3>
+          <p className="muted">{t("home.personaConsumerBody")}</p>
         </Link>
       </section>
     </div>

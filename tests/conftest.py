@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("HONEYCHAIN_SKIP_DEMO_SEED", "1")
 
 from backend.database import reset_engine
 from backend.main import create_app

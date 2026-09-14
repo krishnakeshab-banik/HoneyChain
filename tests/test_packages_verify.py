@@ -42,7 +42,7 @@ def test_package_qr_and_get_verify_url(client: TestClient, post_reading) -> None
     listed = client.get("/api/packages")
     assert listed.status_code == 200
     assert listed.json()[0]["package_id"] == package_id
-    assert "package_id=" in listed.json()[0]["qr_reference"]
+    assert "/verify?package_id=" in listed.json()[0]["qr_reference"]
 
     qr = client.get(f"/api/packages/{package_id}/qr")
     assert qr.status_code == 200

@@ -152,6 +152,15 @@ def commit_batch(session: Session, batch_id: str) -> BatchOut:
             status_code=409,
             detail="Lab result is fail. The batch cannot be committed until it passes inspection.",
         )
+    if record.lab_test_result != "pass":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Batch '{batch_id}' is waiting for lab inspection "
+                f"(current result: '{record.lab_test_result}'). "
+                "Record a pass on the Lab desk before running the oracle."
+            ),
+        )
 
     result = evaluate_weight(record.declared_weight_kg, list(record.harvests))
     log_decision(session, record.batch_id, result)

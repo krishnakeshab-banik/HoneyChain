@@ -9,8 +9,27 @@ from backend.schemas.telemetry import HiveSummary, HiveSummaryLatest, SensorRead
 from backend.services.hive_service import require_hive
 
 
+def _to_schema(record: SensorReadingRecord) -> SensorReading:
+    return SensorReading(
+        hive_id=record.hive_id,
+        timestamp=record.timestamp,
+        inside_temperature_c=record.inside_temperature_c,
+        outside_temperature_c=record.outside_temperature_c,
+        humidity_pct=record.humidity_pct,
+        weight_kg=record.weight_kg,
+        source=record.source,  # type: ignore[arg-type]
+    )
+
+
 def store_reading(session: Session, reading: SensorReading) -> SensorReading:
     require_hive(session, reading.hive_id)
+    existing = session.scalars(
+        select(SensorReadingRecord)
+        .where(SensorReadingRecord.hive_id == reading.hive_id)
+        .where(SensorReadingRecord.timestamp == reading.timestamp)
+    ).first()
+    if existing is not None:
+        return _to_schema(existing)
     record = SensorReadingRecord(
         hive_id=reading.hive_id,
         timestamp=reading.timestamp,
@@ -22,7 +41,7 @@ def store_reading(session: Session, reading: SensorReading) -> SensorReading:
     )
     session.add(record)
     session.flush()
-    return reading
+    return _to_schema(record)
 
 
 def list_readings(session: Session, hive_id: str) -> list[SensorReading]:
@@ -32,18 +51,7 @@ def list_readings(session: Session, hive_id: str) -> list[SensorReading]:
         .where(SensorReadingRecord.hive_id == hive_id)
         .order_by(SensorReadingRecord.id.asc())
     ).all()
-    return [
-        SensorReading(
-            hive_id=row.hive_id,
-            timestamp=row.timestamp,
-            inside_temperature_c=row.inside_temperature_c,
-            outside_temperature_c=row.outside_temperature_c,
-            humidity_pct=row.humidity_pct,
-            weight_kg=row.weight_kg,
-            source=row.source,  # type: ignore[arg-type]
-        )
-        for row in rows
-    ]
+    return [_to_schema(row) for row in rows]
 
 
 def latest_reading(session: Session, hive_id: str) -> SensorReadingRecord | None:

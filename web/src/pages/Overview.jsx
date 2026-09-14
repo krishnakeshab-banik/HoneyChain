@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiGet, apiSend } from "../api";
+import { apiGet, apiPost, apiSend } from "../api";
 import { useAuth } from "../auth";
 import { Banner, HiveSelect, Loading, Metric, PageHeader } from "../components/Ui";
 import { welcomeLine } from "../greeting";
@@ -13,6 +13,7 @@ export default function Overview({ canRegister = true }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
+  const [demo, setDemo] = useState(null);
   const [form, setForm] = useState({
     hive_id: "IN-KL-002",
     name: "Kerala Field Hive",
@@ -100,6 +101,28 @@ export default function Overview({ canRegister = true }) {
 
   const latest = summary?.latest;
 
+  useEffect(() => {
+    if (!canRegister) {
+      return undefined;
+    }
+    let cancelled = false;
+    const tick = () => {
+      apiGet("/api/demo/status")
+        .then((row) => {
+          if (!cancelled) {
+            setDemo(row);
+          }
+        })
+        .catch(() => {});
+    };
+    tick();
+    const timer = setInterval(tick, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [canRegister]);
+
   return (
     <div>
       <PageHeader
@@ -155,6 +178,24 @@ export default function Overview({ canRegister = true }) {
         </>
       )}
 
+      {canRegister && demo && (
+        <div className="card">
+          <p className="page-kicker">SIMULATOR LINK</p>
+          <p>Mode {demo.mode}. Offline queue {demo.queue_length} reading(s). {demo.note}</p>
+          <div className="row">
+            {["offline", "online", "auto"].map((mode) => (
+              <button
+                key={mode}
+                className="ghost"
+                type="button"
+                onClick={() => apiPost("/api/demo/link", { mode }).then(setDemo).catch((err) => setError(err.message))}
+              >
+                Force {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {canRegister && <h2>Register a hive</h2>}
       {canRegister && <p className="purpose">Creates a real hive record via POST /api/hives. The new hive appears in this list immediately.</p>}
       {canRegister && (

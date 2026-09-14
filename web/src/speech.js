@@ -16,15 +16,51 @@ export function canListen() {
   return typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+function pickVoice(lang) {
+  const voices = window.speechSynthesis.getVoices() || [];
+  const wanted = lang.toLowerCase().replace("_", "-");
+  const prefix = wanted.slice(0, 2);
+  return (
+    voices.find((voice) => (voice.lang || "").toLowerCase().replace("_", "-") === wanted) ||
+    voices.find((voice) => (voice.lang || "").toLowerCase().startsWith(prefix)) ||
+    null
+  );
+}
+
 export function speak(text, language = "en") {
   if (!canSpeak() || !text) {
-    return;
+    return Promise.resolve(false);
   }
   window.speechSynthesis.cancel();
+  const lang = SPEECH_LANG[language] || "en-IN";
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = SPEECH_LANG[language] || "en-IN";
+  utterance.lang = lang;
   utterance.rate = 0.95;
-  window.speechSynthesis.speak(utterance);
+  const voice = pickVoice(lang);
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang || lang;
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve(Boolean(ok));
+    };
+    utterance.onstart = () => done(true);
+    utterance.onerror = () => done(false);
+    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    } catch {
+      /* Chrome sometimes needs a resume kick after speak() */
+    }
+    window.setTimeout(() => done(window.speechSynthesis.speaking || window.speechSynthesis.pending), 500);
+  });
 }
 
 export function stopSpeaking() {

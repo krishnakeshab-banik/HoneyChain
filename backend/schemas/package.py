@@ -9,7 +9,7 @@ class PackageCreate(BaseModel):
     package_id: str = Field(..., min_length=3, max_length=50)
     batch_id: str = Field(..., min_length=3, max_length=50)
     verify_base_url: str = Field(
-        default="http://127.0.0.1:5173",
+        default="http://127.0.0.1:5173/verify",
         description="React UI origin encoded into the QR code.",
     )
 
@@ -36,6 +36,13 @@ class HiveHealthAtHarvest(BaseModel):
     status_label: str
 
 
+class HarvestPassportRow(BaseModel):
+    harvest_id: str
+    hive_id: str
+    raw_weight_kg: float
+    harvested_at: datetime
+
+
 class VerifyPassport(BaseModel):
     package_id: str
     batch_id: str
@@ -43,6 +50,8 @@ class VerifyPassport(BaseModel):
     beekeeper_name: str
     cluster: str
     harvest_dates: list[datetime]
+    harvests: list[HarvestPassportRow] = []
+    declared_weight_kg: float = 0
     lab_test_result: str
     hive_health_at_harvest: list[HiveHealthAtHarvest]
     ledger_verified: bool

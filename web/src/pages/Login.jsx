@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth";
 import AuthShell, { FieldError, PasswordField } from "../components/AuthShell";
 import { Banner } from "../components/Ui";
@@ -12,6 +13,7 @@ const ROLE_HOME = {
 };
 
 export default function Login() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,10 +30,10 @@ export default function Login() {
   function validate() {
     const next = {};
     if (!username.trim()) {
-      next.username = "Enter your username.";
+      next.username = t("login.userRequired");
     }
     if (!password) {
-      next.password = "Enter your password.";
+      next.password = t("login.passRequired");
     }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -57,17 +59,13 @@ export default function Login() {
 
   return (
     <AuthShell
-      kicker={officerTone ? "KVIC / LAB DESK" : "SIGN IN"}
-      title={officerTone ? "Officer and lab sign-in" : "Sign in"}
-      lead={
-        officerTone
-          ? "Use the account an administrator created for your cluster. Beekeepers register separately."
-          : "Use the account you were given. Beekeepers can also create one."
-      }
+      kicker={officerTone ? t("login.kicker") : t("login.kicker")}
+      title={officerTone ? t("login.titleOfficer") : t("login.titleGeneric")}
+      lead={t("login.purpose")}
     >
       <form className="card auth-card" onSubmit={onSubmit} noValidate>
         {error && <Banner tone="bad">{error}</Banner>}
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">{t("login.username")}</label>
         <input
           id="username"
           value={username}
@@ -81,7 +79,7 @@ export default function Login() {
         <PasswordField
           id="password"
           value={password}
-          label="Password"
+          label={t("login.password")}
           onChange={(event) => {
             setPassword(event.target.value);
             setFieldErrors((prev) => ({ ...prev, password: "" }));
@@ -89,14 +87,14 @@ export default function Login() {
         />
         <FieldError message={fieldErrors.password} />
         <p>
-          <Link to="/forgot-password">Forgot password?</Link>
+          <Link to="/forgot-password">{t("login.forgot")}</Link>
         </p>
         <button className="primary" type="submit" disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("login.submitting") : t("login.submit")}
         </button>
       </form>
       <p className="muted">
-        Beekeeper without an account? <Link to="/register">Register</Link>
+        {t("login.registerTitle")} <Link to="/register">{t("nav.register")}</Link>
       </p>
     </AuthShell>
   );

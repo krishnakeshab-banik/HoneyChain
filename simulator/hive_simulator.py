@@ -29,6 +29,7 @@ API_URL = "http://127.0.0.1:8000/api/sensor-readings"
 HIVE_ID = "IN-WB-001"
 SEND_INTERVAL_SECONDS = 5
 QUEUE_PATH = Path(__file__).resolve().parent.parent / "data" / "simulator_queue.json"
+CONTROL_PATH = Path(__file__).resolve().parent.parent / "data" / "simulator_control.json"
 OFFLINE_FLIP_CHANCE = 0.10
 
 HiveState = dict[str, float]
@@ -61,6 +62,51 @@ HIVE_PROFILES: dict[str, dict[str, Any]] = {
             "outside_temperature_c": (8.0, 28.0),
             "humidity_pct": (40.0, 85.0),
             "weight_kg": (36.0, 54.0),
+        },
+        "online": True,
+    },
+    "IN-WB-002": {
+        "state": {
+            "inside_temperature_c": 34.6,
+            "outside_temperature_c": 30.4,
+            "humidity_pct": 71.0,
+            "weight_kg": 41.2,
+        },
+        "ranges": {
+            "inside_temperature_c": (30.0, 38.0),
+            "outside_temperature_c": (20.0, 40.0),
+            "humidity_pct": (40.0, 90.0),
+            "weight_kg": (35.0, 55.0),
+        },
+        "online": True,
+    },
+    "IN-WB-003": {
+        "state": {
+            "inside_temperature_c": 33.8,
+            "outside_temperature_c": 29.8,
+            "humidity_pct": 74.0,
+            "weight_kg": 43.5,
+        },
+        "ranges": {
+            "inside_temperature_c": (30.0, 38.0),
+            "outside_temperature_c": (20.0, 40.0),
+            "humidity_pct": (40.0, 90.0),
+            "weight_kg": (35.0, 55.0),
+        },
+        "online": True,
+    },
+    "IN-KA-001": {
+        "state": {
+            "inside_temperature_c": 34.0,
+            "outside_temperature_c": 26.0,
+            "humidity_pct": 64.0,
+            "weight_kg": 40.6,
+        },
+        "ranges": {
+            "inside_temperature_c": (30.0, 38.0),
+            "outside_temperature_c": (16.0, 34.0),
+            "humidity_pct": (40.0, 88.0),
+            "weight_kg": (35.0, 52.0),
         },
         "online": True,
     },
@@ -137,7 +183,38 @@ def send_reading(reading: dict[str, Any]) -> bool:
         return False
 
 
+def read_control() -> dict[str, Any]:
+    if not CONTROL_PATH.is_file():
+        return {"mode": "auto"}
+    try:
+        loaded = json.loads(CONTROL_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"mode": "auto"}
+    return loaded if isinstance(loaded, dict) else {"mode": "auto"}
+
+
+def write_control(mode: str) -> None:
+    CONTROL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONTROL_PATH.write_text(json.dumps({"mode": mode}, indent=2), encoding="utf-8")
+
+
+def _forced_online() -> bool | None:
+    mode = str(read_control().get("mode") or "auto").lower()
+    if mode == "offline":
+        return False
+    if mode == "online":
+        return True
+    return None
+
+
 def _maybe_flip_link(hive_id: str) -> None:
+    forced = _forced_online()
+    if forced is not None:
+        previous = bool(HIVE_PROFILES[hive_id]["online"])
+        HIVE_PROFILES[hive_id]["online"] = forced
+        if previous != forced:
+            print(f"[LINK] {hive_id} forced {'ONLINE' if forced else 'OFFLINE'} by simulator_control.json")
+        return
     if random.random() < OFFLINE_FLIP_CHANCE:
         HIVE_PROFILES[hive_id]["online"] = not HIVE_PROFILES[hive_id]["online"]
         state_label = "ONLINE" if HIVE_PROFILES[hive_id]["online"] else "OFFLINE"
@@ -174,6 +251,14 @@ def dispatch_reading(reading: dict[str, Any]) -> None:
 
 
 def run_simulator() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Stream synthetic hive telemetry.")
+    parser.add_argument("--mode", choices=["auto", "online", "offline"], default=None)
+    args = parser.parse_args()
+    if args.mode:
+        write_control(args.mode)
+
     print()
     print("============================================")
     print("       HoneyChain Hive Simulator")
@@ -181,8 +266,10 @@ def run_simulator() -> None:
     print()
     print(f"Hives: {', '.join(HIVE_PROFILES)}")
     print(f"API:  {API_URL}")
+    print(f"Link mode: {read_control().get('mode', 'auto')}")
     print(f"Sending one reading per hive every {SEND_INTERVAL_SECONDS} seconds.")
     print("Offline readings are queued locally and flushed on reconnect.")
+    print("Force the link with --mode online|offline or data/simulator_control.json")
     print()
     print("Press Ctrl + C to stop the simulator.")
     print()

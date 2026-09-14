@@ -1,19 +1,20 @@
 export default function LineChart({ rows, xKey, yKeys, labels }) {
-  if (!rows || rows.length < 2) {
-    return <p className="muted">Need at least two readings to draw this chart.</p>;
+  if (!rows || rows.length < 1) {
+    return <p className="muted">No points yet.</p>;
   }
+  const plot = rows.length === 1 ? [rows[0], rows[0]] : rows;
   const width = 640;
   const height = 180;
   const pad = 28;
-  const xs = rows.map((_, index) => index);
-  const series = yKeys.map((key) => rows.map((row) => Number(row[key])));
+  const xs = plot.map((_, index) => index);
+  const series = yKeys.map((key) => plot.map((row) => Number(row[key])));
   const all = series.flat();
   const min = Math.min(...all);
   const max = Math.max(...all);
   const span = max - min || 1;
 
   const point = (index, value) => {
-    const x = pad + (index / (rows.length - 1)) * (width - pad * 2);
+    const x = pad + (index / (plot.length - 1)) * (width - pad * 2);
     const y = height - pad - ((value - min) / span) * (height - pad * 2);
     return `${x},${y}`;
   };

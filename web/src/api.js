@@ -136,10 +136,20 @@ function redirectExpired() {
   window.location.assign(`/login?expired=1&next=${next}`);
 }
 
+function isAnonymousApi(path) {
+  return (
+    path.startsWith("/api/public/") ||
+    path.startsWith("/api/packages") ||
+    path.startsWith("/api/verify/") ||
+    path === "/health"
+  );
+}
+
 export async function apiRequest(method, path, payload, options = {}) {
   const headers = {};
   const token = getToken();
-  if (token) {
+  const skipAuth = options.anonymous || isAnonymousApi(path);
+  if (token && !skipAuth) {
     headers.Authorization = `Bearer ${token}`;
   }
   if (payload !== undefined) {
@@ -147,12 +157,22 @@ export async function apiRequest(method, path, payload, options = {}) {
   }
   let response;
   try {
-    response = await fetch(`${API}${path}`, {
-      method,
-      headers,
-      body: payload !== undefined ? JSON.stringify(payload) : undefined,
-    });
-  } catch {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), options.timeoutMs || 12000);
+    try {
+      response = await fetch(`${API}${path}`, {
+        method,
+        headers,
+        body: payload !== undefined ? JSON.stringify(payload) : undefined,
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timer);
+    }
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error("Request timed out. Make sure the HoneyChain API is running on port 8000.");
+    }
     if (!options.skipQueue && method !== "GET") {
       const queue = readQueue();
       queue.push({ method, path, payload, queuedAt: new Date().toISOString() });

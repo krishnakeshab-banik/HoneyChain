@@ -17,6 +17,9 @@ const ICONS = {
   "/app/ledger": IconChain,
   "/app/clonewatch": IconQr,
   "/app/users": IconHive,
+  "/app/model": IconYield,
+  "/app/analytics": IconMarket,
+  "/app/report": IconMarket,
   "/verify": IconQr,
 };
 

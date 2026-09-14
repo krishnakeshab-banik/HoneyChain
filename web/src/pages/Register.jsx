@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { apiPost } from "../api";
 import { useAuth } from "../auth";
 import AuthShell, { FieldError, PasswordField } from "../components/AuthShell";
 import { Banner } from "../components/Ui";
 
 export default function Register() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: "", password: "", display_name: "", email: "", phone: "" });
@@ -21,13 +23,13 @@ export default function Register() {
   function validate() {
     const next = {};
     if (!form.username.trim()) {
-      next.username = "Pick a short username.";
+      next.username = t("register.userRequired");
     }
     if (form.password.length < 8) {
-      next.password = "Use at least 8 characters.";
+      next.password = t("register.passRequired");
     }
     if (!form.display_name.trim()) {
-      next.display_name = "Tell us how to greet you.";
+      next.display_name = t("register.nameRequired");
     }
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -59,40 +61,40 @@ export default function Register() {
 
   return (
     <AuthShell
-      kicker="NEW BEEKEEPER"
-      title="Create your account"
-      lead="Only beekeepers register here. Officers and labs are added by an administrator."
+      kicker={t("register.kicker")}
+      title={t("register.title")}
+      lead={t("register.lead")}
     >
       <form className="card auth-card" onSubmit={onSubmit} noValidate>
         {error && <Banner tone="bad">{error}</Banner>}
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">{t("register.username")}</label>
         <input id="username" value={form.username} onChange={(event) => setField("username", event.target.value)} />
         <FieldError message={fieldErrors.username} />
-        <label htmlFor="display_name">Your name</label>
+        <label htmlFor="display_name">{t("register.name")}</label>
         <input
           id="display_name"
           value={form.display_name}
           onChange={(event) => setField("display_name", event.target.value)}
         />
         <FieldError message={fieldErrors.display_name} />
-        <label htmlFor="email">Email (optional)</label>
+        <label htmlFor="email">{t("register.email")}</label>
         <input id="email" value={form.email} onChange={(event) => setField("email", event.target.value)} />
-        <label htmlFor="phone">Phone (optional)</label>
+        <label htmlFor="phone">{t("register.phone")}</label>
         <input id="phone" value={form.phone} onChange={(event) => setField("phone", event.target.value)} />
         <PasswordField
           id="password"
           value={form.password}
-          label="Password"
+          label={t("register.password")}
           autoComplete="new-password"
           onChange={(event) => setField("password", event.target.value)}
         />
         <FieldError message={fieldErrors.password} />
         <button className="primary" type="submit" disabled={busy}>
-          {busy ? "Creating…" : "Create account"}
+          {busy ? t("register.submitting") : t("register.submit")}
         </button>
       </form>
       <p className="muted">
-        Already registered? <Link to="/login">Sign in</Link>
+        {t("register.already")} <Link to="/login">{t("nav.login")}</Link>
       </p>
     </AuthShell>
   );

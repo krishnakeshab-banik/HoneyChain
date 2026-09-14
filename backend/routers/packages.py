@@ -42,5 +42,5 @@ def get_package_qr(package_id: str, session: Session = Depends(get_db)) -> FileR
     package = package_service.get_package(session, package_id)
     path = Path(package.qr_image_path)
     if not path.is_file():
-        raise HTTPException(status_code=404, detail="QR image file is missing.")
+        raise HTTPException(status_code=404, detail="QR image file is missing after regenerate.")
     return FileResponse(path, media_type="image/png", filename=f"{package_id}.png")

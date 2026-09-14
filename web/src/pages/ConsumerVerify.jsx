@@ -12,7 +12,7 @@ const LOCATIONS = {
 
 export default function ConsumerVerify() {
   const { t } = useTranslation();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const initialPackageId = params.get("package_id") || "";
   const [packageId, setPackageId] = useState(initialPackageId);
   const [locationName, setLocationName] = useState("Kolkata shop");
@@ -48,11 +48,6 @@ export default function ConsumerVerify() {
     apiSend("POST", `/api/verify/${initialPackageId}`, LOCATIONS["Kolkata shop"])
       .then((result) => {
         setPassport(result);
-        if (initialPackageId) {
-          const next = new URLSearchParams(params);
-          next.delete("package_id");
-          setParams(next, { replace: true });
-        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setVerifying(false));
@@ -152,8 +147,25 @@ export default function ConsumerVerify() {
             <Metric label={t("verify.cluster")} value={passport.cluster} />
             <Metric label={t("verify.lab")} value={passport.lab_test_result} />
           </div>
+          <div className="grid-3">
+            <Metric label={t("verify.batch")} value={passport.batch_id} />
+            <Metric label={t("verify.package")} value={passport.package_id} />
+            <Metric label={t("verify.declared")} value={`${Number(passport.declared_weight_kg || 0).toFixed(2)} kg`} />
+          </div>
           <h2>{t("verify.harvests")}</h2>
-          <p>{passport.harvest_dates.map((item) => new Date(item).toLocaleString()).join(" · ") || "None"}</p>
+          {passport.harvests?.length ? (
+            <DataTable
+              rows={passport.harvests}
+              columns={[
+                { key: "harvest_id", label: t("verify.harvest") },
+                { key: "hive_id", label: t("verify.hive") },
+                { key: "raw_weight_kg", label: t("verify.weight") },
+                { key: "harvested_at", label: t("verify.harvests"), render: (row) => new Date(row.harvested_at).toLocaleString() },
+              ]}
+            />
+          ) : (
+            <p>{passport.harvest_dates.map((item) => new Date(item).toLocaleString()).join(" · ") || t("verify.none")}</p>
+          )}
           <h2>{t("verify.health")}</h2>
           <DataTable
             rows={passport.hive_health_at_harvest}

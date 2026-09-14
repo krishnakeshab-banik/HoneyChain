@@ -501,7 +501,7 @@ th, td {
 .empty-state { text-align: center; }
 .empty-art { width: 92px; height: auto; margin: 0 auto 8px; display: block; }
 
-.tour-layer { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
+.tour-layer { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .tour-dim { position: absolute; inset: 0; background: rgba(36, 28, 20, 0.18); pointer-events: auto; }
 .tour-spot {
   position: fixed;
@@ -512,9 +512,15 @@ th, td {
 }
 .tour-card {
   position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+  top: auto;
   max-width: 340px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
   pointer-events: auto;
-  z-index: 81;
+  z-index: 91;
 }
 .tour-offer { margin: 16px 0; }
 .notice-list { display: grid; gap: 10px; margin: 16px 0; }
@@ -643,7 +649,58 @@ th, td {
 
 @media (max-width: 520px) {
   .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
-  .public-actions .ghost { display: none; }
+  .public-actions .ghost:not(.staff-entry) { display: none; }
   .auth-form { padding: 20px 16px; }
   .verify-page h1 { font-size: 1.45rem; }
 }
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.staff-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+.seller-map {
+  position: relative;
+  height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #d8efe8 0%, #efe6d4 70%);
+  border: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.seller-map-land {
+  position: absolute;
+  inset: 18% 18% 16% 12%;
+  background: #c4b48a;
+  border-radius: 42% 38% 36% 44%;
+  opacity: 0.55;
+}
+.seller-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.seed-panel {
+  margin: 20px 0 28px;
+  padding: 16px 18px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  background: var(--paper-deep);
+}
+.seed-panel h3 { margin-top: 4px; }

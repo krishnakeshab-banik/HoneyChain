@@ -26,7 +26,10 @@ def _to_out(record: PackageRecord) -> PackageOut:
 
 
 def _qr_url(base_url: str, package_id: str) -> str:
-    return f"{base_url.rstrip('/')}/?package_id={package_id}"
+    origin = base_url.rstrip("/")
+    if origin.endswith("/verify"):
+        return f"{origin}?package_id={package_id}"
+    return f"{origin}/verify?package_id={package_id}"
 
 
 def _write_qr_png(package_id: str, url: str) -> Path:
@@ -73,13 +76,29 @@ def create_package(session: Session, payload: PackageCreate) -> PackageOut:
 
 def list_packages(session: Session) -> list[PackageOut]:
     rows = session.scalars(select(PackageRecord).order_by(PackageRecord.package_id)).all()
-    return [_to_out(row) for row in rows]
+    out = [_to_out(ensure_qr_file(row)) for row in rows]
+    session.flush()
+    return out
+
+
+def ensure_qr_file(record: PackageRecord, base_url: str = "http://127.0.0.1:5173/verify") -> PackageRecord:
+    """Rewrite the QR to the verify page and recreate the PNG if it is missing."""
+
+    target = _qr_url(base_url, record.package_id)
+    path = Path(record.qr_image_path) if record.qr_image_path else QR_DIR / f"{record.package_id}.png"
+    if record.qr_reference != target or not path.is_file():
+        written = _write_qr_png(record.package_id, target)
+        record.qr_reference = target
+        record.qr_image_path = str(written)
+    return record
 
 
 def get_package(session: Session, package_id: str) -> PackageOut:
     record = session.get(PackageRecord, package_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Package '{package_id}' does not exist.")
+    ensure_qr_file(record)
+    session.flush()
     return _to_out(record)
 
 

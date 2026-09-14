@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiGet } from "../api";
 import { Banner, DataTable, Loading, Metric, PageHeader } from "../components/Ui";
 
 export default function CloneWatch() {
+  const { t } = useTranslation();
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,9 +29,9 @@ export default function CloneWatch() {
   return (
     <div data-tour="clonewatch">
       <PageHeader
-        kicker="CLONEWATCH"
-        title="CloneWatch"
-        purpose="Every oracle rejection and flagged consumer scan, each with its specific reason. This list is empty only when nothing has been flagged."
+        kicker={t("clone.kicker")}
+        title={t("clone.title")}
+        purpose={t("clone.purpose")}
       />
       {loading && <Loading label="Loading CloneWatch flags…" />}
       {error && (

@@ -46,6 +46,7 @@ def init_db() -> None:
 
     # Imported here so every ORM model is registered on Base.metadata.
     from backend import models as _models  # noqa: F401
+    from backend.seed.story import seed_demo_story
     from backend.services.seed_service import seed_reference_data
 
     Base.metadata.create_all(bind=engine)
@@ -53,6 +54,7 @@ def init_db() -> None:
     session = SessionLocal()
     try:
         seed_reference_data(session)
+        seed_demo_story(session)
         session.commit()
     except Exception:
         session.rollback()

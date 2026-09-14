@@ -12,6 +12,7 @@ export default function SiteFooter({ compact = false }) {
         <Link to="/how-it-works">{t("nav.how")}</Link>
         <Link to="/verify">{t("nav.verifyHoney")}</Link>
         <Link to="/market">{t("nav.marketPublic")}</Link>
+        <Link to="/staff">{t("nav.admin")}</Link>
         <Link to="/login">{t("nav.login")}</Link>
       </p>
       <div className="footer-meta">

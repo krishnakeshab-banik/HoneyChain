@@ -19,3 +19,13 @@ class ChainIntegrityOut(BaseModel):
     checked_blocks: int
     failed_index: int | None
     detail: str
+    broken_indexes: list[int] = []
+
+
+class TamperTestOut(BaseModel):
+    action: str
+    batch_id: str
+    stored_weight_kg: float
+    committed_weight_kg: float
+    integrity: ChainIntegrityOut
+    note: str

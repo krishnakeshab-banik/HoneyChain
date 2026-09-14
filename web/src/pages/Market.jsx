@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { apiGet, apiSend } from "../api";
 import { useAuth } from "../auth";
 import { Banner, DataTable, Loading, PageHeader } from "../components/Ui";
+import { isSeedDemand, isSeedSale, splitSeed } from "../marketSeed";
 
 export default function Market() {
   const { t } = useTranslation();
@@ -60,6 +61,9 @@ export default function Market() {
     }
   }
 
+  const { live: liveDemands, seed: seedDemands } = splitSeed(demands, isSeedDemand);
+  const { live: livePrices, seed: seedPrices } = splitSeed(prices, isSeedSale);
+
   return (
     <div data-tour="market-board">
       <PageHeader kicker={t("market.kicker")} title={t("market.title")} purpose={t("market.purpose")} />
@@ -78,8 +82,8 @@ export default function Market() {
       )}
 
       <h2>{t("market.demandTitle")}</h2>
-      {demands.length === 0 && !loading && <Banner tone="info">{t("market.emptyDemand")}</Banner>}
-      {demands.map((demand) => (
+      {liveDemands.length === 0 && !loading && <Banner tone="info">{t("market.emptyDemand")}</Banner>}
+      {liveDemands.map((demand) => (
         <div className="card" key={demand.demand_id} style={{ marginBottom: 12 }}>
           <strong>{demand.buyer_name}</strong>
           <p className="muted">
@@ -154,6 +158,26 @@ export default function Market() {
         </div>
       ))}
 
+      {seedDemands.length > 0 && (
+        <div className="seed-panel" data-testid="seed-demand">
+          <p className="page-kicker">EXAMPLE LISTINGS</p>
+          <h3>One-time seed demand — not a live buyer post</h3>
+          <p className="muted">Kept apart from the live board so a new listing is not mistaken for demo data.</p>
+          {seedDemands.map((demand) => (
+            <div className="card" key={demand.demand_id} style={{ marginBottom: 12 }}>
+              <strong>{demand.buyer_name}</strong>
+              <p className="muted">
+                {demand.demand_id} · {demand.region} · {demand.status}
+              </p>
+              <p>
+                {demand.quantity_kg} kg · ₹{demand.price_min_inr}–{demand.price_max_inr} / kg
+              </p>
+              {demand.notes && <p className="muted">{demand.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {["officer", "admin"].includes(role) && (
         <form
           className="card"
@@ -192,11 +216,11 @@ export default function Market() {
       )}
 
       <h2>{t("market.pricesTitle")}</h2>
-      {prices.length === 0 && !loading ? (
+      {livePrices.length === 0 && !loading ? (
         <Banner tone="info">{t("market.emptyPrices")}</Banner>
       ) : (
         <DataTable
-          rows={prices}
+          rows={livePrices}
           columns={[
             { key: "sale_id", label: t("market.saleId") },
             { key: "batch_id", label: t("market.batchId") },
@@ -207,6 +231,22 @@ export default function Market() {
             { key: "buyer_name", label: t("market.buyer") },
           ]}
         />
+      )}
+      {seedPrices.length > 0 && (
+        <div className="seed-panel" data-testid="seed-sales">
+          <p className="page-kicker">EXAMPLE SALES</p>
+          <h3>One-time seed sale — not a new live trade</h3>
+          <DataTable
+            rows={seedPrices}
+            columns={[
+              { key: "sale_id", label: t("market.saleId") },
+              { key: "batch_id", label: t("market.batchId") },
+              { key: "region", label: t("market.region") },
+              { key: "price_per_kg_inr", label: t("market.pricePerKg") },
+              { key: "quantity_kg", label: t("market.quantity") },
+            ]}
+          />
+        </div>
       )}
 
       {role === "admin" && (

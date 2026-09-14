@@ -7,6 +7,7 @@ import PublicHeader from "./components/PublicHeader";
 import RequireAuth from "./components/RequireAuth";
 import SiteFooter from "./components/SiteFooter";
 import VoiceAgent from "./components/VoiceAgent";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import Alerts from "./pages/Alerts";
 import BeekeeperHome from "./pages/BeekeeperHome";
 import CloneWatch from "./pages/CloneWatch";
@@ -21,6 +22,8 @@ import LabDesk from "./pages/LabDesk";
 import LedgerIntegrity from "./pages/LedgerIntegrity";
 import Login from "./pages/Login";
 import Market from "./pages/Market";
+import ModelTransparency from "./pages/ModelTransparency";
+import PublicModel from "./pages/PublicModel";
 import MyHarvests from "./pages/MyHarvests";
 import NotFound from "./pages/NotFound";
 import OfficerCluster from "./pages/OfficerCluster";
@@ -29,6 +32,8 @@ import Profile from "./pages/Profile";
 import PublicMarket from "./pages/PublicMarket";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
+import SellerReport from "./pages/SellerReport";
+import StaffLogin from "./pages/StaffLogin";
 import Traceability from "./pages/Traceability";
 import UserAdmin from "./pages/UserAdmin";
 import { useAuth } from "./auth";
@@ -145,10 +150,26 @@ export default function App() {
         }
       />
       <Route
+        path="/model"
+        element={
+          <AdaptiveLayout>
+            <PublicModel />
+          </AdaptiveLayout>
+        }
+      />
+      <Route
         path="/login"
         element={
           <PublicLayout>
             <Login />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/staff"
+        element={
+          <PublicLayout>
+            <StaffLogin />
           </PublicLayout>
         }
       />
@@ -310,6 +331,36 @@ export default function App() {
           <RequireAuth roles={["admin"]}>
             <AppLayout>
               <UserAdmin />
+            </AppLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/model"
+        element={
+          <RequireAuth roles={["admin"]}>
+            <AppLayout>
+              <ModelTransparency />
+            </AppLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/analytics"
+        element={
+          <RequireAuth roles={["admin"]}>
+            <AppLayout>
+              <AdminAnalytics />
+            </AppLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/report"
+        element={
+          <RequireAuth roles={["beekeeper"]}>
+            <AppLayout>
+              <SellerReport />
             </AppLayout>
           </RequireAuth>
         }

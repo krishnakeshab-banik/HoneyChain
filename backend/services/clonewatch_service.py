@@ -10,7 +10,7 @@ from backend.models.oracle import OracleEventRecord
 from backend.models.package import PackageRecord
 from backend.models.scan import ScanRecord
 from backend.schemas.clonewatch import CloneWatchReport, FlaggedItem
-from backend.schemas.package import HiveHealthAtHarvest, ScanLocationIn, VerifyPassport
+from backend.schemas.package import HarvestPassportRow, HiveHealthAtHarvest, ScanLocationIn, VerifyPassport
 from backend.services.harvest_service import require_beekeeper
 from backend.services.ledger_service import ledger_service
 from backend.services.package_service import load_package_with_batch
@@ -88,12 +88,23 @@ def _evaluate_scan_flags(
     return (len(reasons) > 0, " ".join(reasons))
 
 
+def _resolve_package_id(session: Session, package_id: str) -> str:
+    if session.get(PackageRecord, package_id) is not None:
+        return package_id
+    by_batch = session.scalars(
+        select(PackageRecord).where(PackageRecord.batch_id == package_id).order_by(PackageRecord.created_at.asc())
+    ).first()
+    if by_batch is not None:
+        return by_batch.package_id
+    return package_id
+
+
 def record_verification(
     session: Session,
     package_id: str,
     location: ScanLocationIn,
 ) -> VerifyPassport:
-    package = load_package_with_batch(session, package_id)
+    package = load_package_with_batch(session, _resolve_package_id(session, package_id))
     scan = ScanRecord(
         package_id=package.package_id,
         scanned_at=datetime.now(timezone.utc),
@@ -138,6 +149,16 @@ def record_verification(
         beekeeper_name=first_keeper.name,
         cluster=first_keeper.cluster,
         harvest_dates=[item.harvested_at for item in harvests],
+        harvests=[
+            HarvestPassportRow(
+                harvest_id=item.harvest_id,
+                hive_id=item.hive_id,
+                raw_weight_kg=item.raw_weight_kg,
+                harvested_at=item.harvested_at,
+            )
+            for item in harvests
+        ],
+        declared_weight_kg=package.batch.declared_weight_kg,
         lab_test_result=package.batch.lab_test_result,
         hive_health_at_harvest=health_rows,
         ledger_verified=verified,

@@ -2,6 +2,7 @@ export const ROLE_NAV = {
   consumer: [
     { to: "/", key: "nav.home" },
     { to: "/how-it-works", key: "nav.how" },
+    { to: "/model", key: "nav.model" },
     { to: "/verify", key: "nav.verify" },
   ],
   beekeeper: [
@@ -10,6 +11,7 @@ export const ROLE_NAV = {
     { to: "/app/monitor", key: "nav.monitor" },
     { to: "/app/insights", key: "nav.insights" },
     { to: "/app/market", key: "nav.market" },
+    { to: "/app/report", key: "nav.report" },
     { to: "/verify", key: "nav.verify" },
   ],
   officer: [
@@ -36,6 +38,8 @@ export const ROLE_NAV = {
     { to: "/app/market", key: "nav.market" },
     { to: "/app/alerts", key: "nav.alerts" },
     { to: "/app/users", key: "nav.users" },
+    { to: "/app/model", key: "nav.model" },
+    { to: "/app/analytics", key: "nav.analytics" },
     { to: "/verify", key: "nav.verify" },
   ],
 };

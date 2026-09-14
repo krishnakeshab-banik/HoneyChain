@@ -1,4 +1,4 @@
-const CACHE = "honeychain-beekeeper-v1";
+const CACHE = "honeychain-beekeeper-v2";
 const PRECACHE = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {
@@ -14,6 +14,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") {
+    return;
+  }
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/health")) {
+    event.respondWith(fetch(request));
     return;
   }
   event.respondWith(

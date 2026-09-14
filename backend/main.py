@@ -39,10 +39,12 @@ load_dotenv()
 from backend.database import init_db
 from backend.routers import (
     alerts,
+    analytics,
     assistant,
     auth,
     batches,
     clonewatch,
+    demo,
     harvests,
     health,
     hives,
@@ -50,6 +52,7 @@ from backend.routers import (
     lab,
     ledger,
     market,
+    ml,
     packages,
     public,
     sensors,
@@ -118,13 +121,16 @@ def create_app(*, bootstrap: bool = True) -> FastAPI:
     application.include_router(verify.router)
     application.include_router(clonewatch.router)
     application.include_router(insights.router)
+    application.include_router(ml.router)
     application.include_router(assistant.router)
     application.include_router(auth.router)
     application.include_router(lab.router)
     application.include_router(market.router)
     application.include_router(public.router)
     application.include_router(alerts.router)
+    application.include_router(analytics.router)
     application.include_router(users.router)
+    application.include_router(demo.router)
     return application
 
 

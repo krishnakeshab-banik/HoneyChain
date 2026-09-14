@@ -53,6 +53,36 @@ def test_lab_result_and_wrong_role(client: TestClient, post_reading) -> None:
     assert created.json()["inspector"] == "lab"
 
 
+def test_pending_lab_blocks_commit_until_pass(client: TestClient, post_reading) -> None:
+    _harvest(client, post_reading, "HV-LABP")
+    client.post(
+        "/api/batches",
+        json={
+            "batch_id": "BT-LABP",
+            "harvest_ids": ["HV-LABP"],
+            "processing_date": "2026-09-14T15:00:00+00:00",
+            "declared_weight_kg": 6.0,
+            "lab_test_result": "pending",
+        },
+    )
+    blocked = client.post("/api/batches/BT-LABP/commit")
+    assert blocked.status_code == 409
+    assert "lab" in blocked.json()["detail"].lower()
+    lab = _token(client, "lab", "Lab123!")
+    queue = client.get("/api/lab/queue", headers={"Authorization": f"Bearer {lab}"})
+    assert queue.status_code == 200
+    assert "BT-LABP" in queue.json()["pending_batch_ids"]
+    recorded = client.post(
+        "/api/lab/results",
+        headers={"Authorization": f"Bearer {lab}"},
+        json={"batch_id": "BT-LABP", "moisture_pct": 17.1, "purity_pct": 92, "result": "pass", "notes": "ok"},
+    )
+    assert recorded.status_code == 201, recorded.text
+    committed = client.post("/api/batches/BT-LABP/commit")
+    assert committed.status_code == 200, committed.text
+    assert committed.json()["lab_test_result"] == "pass"
+
+
 def test_lab_fail_blocks_commit(client: TestClient, post_reading) -> None:
     _harvest(client, post_reading, "HV-LABF")
     client.post(
