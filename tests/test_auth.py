@@ -139,6 +139,46 @@ def test_register_ignores_role_field(client: TestClient) -> None:
     assert created.json()["role"] == "beekeeper"
 
 
+def test_login_by_display_name(client: TestClient) -> None:
+    response = client.post("/api/auth/login", json={"username": "Ananya Roy", "password": "Beekeeper123!"})
+    assert response.status_code == 200
+    assert response.json()["role"] == "beekeeper"
+
+
+def test_reset_accepts_frontend_aliases(client: TestClient) -> None:
+    issued = client.post("/api/auth/forgot-password", json={"username": "Ananya Roy"})
+    assert issued.status_code == 200
+    assert issued.json()["username"] == "beekeeper"
+    code = issued.json()["reset_code"]
+    reset = client.post(
+        "/api/auth/reset-password",
+        json={"username": "Ananya Roy", "reset_code": code, "new_password": "Beekeeper789!"},
+    )
+    assert reset.status_code == 200, reset.text
+    assert client.post("/api/auth/login", json={"username": "beekeeper", "password": "Beekeeper789!"}).status_code == 200
+
+
+def test_register_beekeeper_gets_a_hive(client: TestClient) -> None:
+    created = client.post(
+        "/api/auth/register",
+        json={
+            "username": "dhruv",
+            "password": "DhruvPass1!",
+            "display_name": "Dhruv Agarwal",
+            "region": "Kerala",
+        },
+    )
+    assert created.status_code == 201, created.text
+    token = created.json()["access_token"]
+    hives = client.get("/api/auth/me/hives", headers={"Authorization": f"Bearer {token}"})
+    assert hives.status_code == 200
+    assert len(hives.json()) >= 1
+    hive_id = hives.json()[0]["hive_id"]
+    summary = client.get(f"/api/hives/{hive_id}/summary", headers={"Authorization": f"Bearer {token}"})
+    assert summary.status_code == 200
+    assert summary.json()["reading_count"] >= 5
+
+
 def test_register_beekeeper_then_me(client: TestClient) -> None:
     created = client.post(
         "/api/auth/register",

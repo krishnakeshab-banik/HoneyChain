@@ -44,6 +44,9 @@ def test_create_hive_happy_path(client: TestClient) -> None:
     )
     assert response.status_code == 201
     assert response.json()["hive_id"] == "IN-KL-002"
+    seeded = client.get("/api/hives/IN-KL-002/summary")
+    assert seeded.status_code == 200
+    assert seeded.json()["reading_count"] >= 5
 
 
 def test_list_hives_includes_both_seeded_ids(client: TestClient) -> None:

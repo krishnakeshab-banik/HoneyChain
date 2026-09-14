@@ -102,12 +102,16 @@ export default function MyHarvests() {
           <div>
             <label htmlFor="harvest_hive">Hive</label>
             <select id="harvest_hive" value={form.hive_id} onChange={(event) => setForm((prev) => ({ ...prev, hive_id: event.target.value }))}>
+              {hives.length === 0 && <option value="">No hive assigned yet</option>}
               {hives.map((hive) => (
                 <option key={hive.hive_id} value={hive.hive_id}>
                   {hive.hive_id} · {hive.name}
                 </option>
               ))}
             </select>
+            {hives.length === 0 && (
+              <p className="muted">A hive is being assigned to your account. Refresh this page if the list stays empty.</p>
+            )}
           </div>
           <NumberStepper
             id="raw_weight"
@@ -151,7 +155,11 @@ export default function MyHarvests() {
 
       <div data-tour="harvest-status">
         {rows.length === 0 && !loading ? (
-          <EmptyState title="No harvests yet">Create one after the hive scale has a reading.</EmptyState>
+          <EmptyState title="No harvests yet">
+            {form.hive_id
+              ? "Review the form above, then Create harvest. The hive scale reading is stored with the log."
+              : "A hive with scale readings is required before you can log a harvest."}
+          </EmptyState>
         ) : (
           rows.map((row) => (
             <article className="card notice-card" key={row.harvest_id}>

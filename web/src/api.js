@@ -136,6 +136,16 @@ function redirectExpired() {
   window.location.assign(`/login?expired=1&next=${next}`);
 }
 
+function isCredentialAuth(path) {
+  return (
+    path.startsWith("/api/auth/login") ||
+    path.startsWith("/api/auth/register") ||
+    path.startsWith("/api/auth/forgot-password") ||
+    path.startsWith("/api/auth/reset-password") ||
+    path.startsWith("/api/auth/logout")
+  );
+}
+
 function isAnonymousApi(path) {
   return (
     path.startsWith("/api/public/") ||
@@ -181,7 +191,7 @@ export async function apiRequest(method, path, payload, options = {}) {
     }
     throw new Error("Couldn't reach the HoneyChain API. Make sure the backend is running.");
   }
-  if (response.status === 401 && !options.skipRefresh && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/register") && path !== "/api/auth/refresh") {
+  if (response.status === 401 && !options.skipRefresh && !isCredentialAuth(path) && path !== "/api/auth/refresh") {
     try {
       await refreshAccess();
       return apiRequest(method, path, payload, { ...options, skipRefresh: true });

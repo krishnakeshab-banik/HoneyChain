@@ -179,7 +179,7 @@ const en = {
     titleOfficer: "KVIC / officer sign in",
     titleGeneric: "Sign in to HoneyChain",
     purpose:
-      "Use a demo account from the README, or register as a beekeeper. Consumers do not need an account to verify a jar.",
+      "Use the short username from registration, not your full name. Demo accounts are in the README. Consumers do not need an account to verify a jar.",
     username: "Username",
     password: "Password",
     forgot: "Forgot password?",
@@ -319,9 +319,9 @@ const en = {
   register: {
     kicker: "NEW BEEKEEPER",
     title: "Create your account",
-    lead: "Only beekeepers register here. Officers and labs are added by an administrator.",
-    username: "Username",
-    name: "Your name",
+    lead: "Pick a short username for sign in. Your name is only for greetings. Officers and labs are added by an administrator.",
+    username: "Username (for sign in)",
+    name: "Your name (shown in the app)",
     email: "Email (optional)",
     phone: "Phone (optional)",
     password: "Password",

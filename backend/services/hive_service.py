@@ -41,7 +41,13 @@ def require_hive(session: Session, hive_id: str) -> HiveRecord:
     return record
 
 
-def create_hive(session: Session, payload: Hive) -> Hive:
+def create_hive(
+    session: Session,
+    payload: Hive,
+    *,
+    seed_telemetry: bool = True,
+    beekeeper_id: str | None = None,
+) -> Hive:
     if session.get(HiveRecord, payload.hive_id) is not None:
         raise HTTPException(
             status_code=409,
@@ -50,4 +56,12 @@ def create_hive(session: Session, payload: Hive) -> Hive:
     record = HiveRecord(**payload.model_dump())
     session.add(record)
     session.flush()
+    if seed_telemetry:
+        from backend.services.hive_bootstrap import seed_starter_readings
+
+        seed_starter_readings(session, payload.hive_id)
+    if beekeeper_id:
+        from backend.services.hive_bootstrap import assign_hive
+
+        assign_hive(session, payload.hive_id, beekeeper_id)
     return _to_schema(record)

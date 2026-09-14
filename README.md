@@ -1,239 +1,370 @@
 # HoneyChain
 
-Smart-hive telemetry, harvest-to-package traceability, a local SHA-256 hash-chain, QR consumer verification, CloneWatch anomaly flags, and two scikit-learn models.
+**Evidence-backed honey intelligence for KVIC’s Honey Mission.**
 
-This is a hackathon prototype. Several layers are **real application logic**. The system ships with a **one-time synthetic seed** so the first boot is not an empty shell. After that, every new reading, harvest, batch, scan, and model inference is live-computed. The ledger is **not** a public blockchain.
+HoneyChain is a government-facing platform that follows one physical story:
 
-**Primary UI:** React (`web/`) on port 5173 locally. FastAPI (`backend/`) on port 8000. In production, FastAPI also serves the built React app.
+**Hive signals → harvest log → lab inspection → weight oracle → hash-chain seal → QR → consumer verify.**
 
-**Hosted demo**
+A KVIC officer can prove a batch’s path. A lab can block a bad jar. A beekeeper can log a harvest against the hive scale. A buyer can check a package with no account.
 
-| Surface | URL |
+This is a **hackathon prototype**. Hive telemetry is simulated. The ledger is a **local SHA-256 hash-chain**, not a public blockchain. The first boot loads a one-time synthetic seed; every new harvest, batch, scan, and model inference after that is live-computed.
+
+| | |
 | --- | --- |
-| Full app (API + UI) | https://honeychain-y8j6.onrender.com |
-| Frontend only (proxies `/api` to Render) | https://honey-chain-coral.vercel.app |
+| **Live app (API + UI)** | https://honeychain-y8j6.onrender.com |
+| **Frontend (proxies `/api` to Render)** | https://honey-chain-coral.vercel.app |
+| **Local UI** | http://127.0.0.1:5173 |
+| **Local API / docs** | http://127.0.0.1:8000 · http://127.0.0.1:8000/docs |
 
-Prefer the Render URL for judging: QR codes, verify, and login all stay on one host. The first Render load after idle can take ~30–60 seconds.
+Use the **Render** URL for judging. QR codes, login, and verify stay on one host. A cold start after idle can take 30–60 seconds.
 
-## What you can demo
+---
 
-1. **Harvest → lab → oracle → new QR → live verify** — a brand-new package ID (not only `PK-LIVE`) verifies on Consumer Verify.
-2. **Lab desk** — pending drafts appear in the queue; **Record lab result** is enabled; commit is blocked until a pass.
-3. **Market Linkage** — live listings and one-time seed/example listings are visually separate.
-4. **Model card** — honest held-out colony-health accuracy **40.0%** (not a dressed-up number).
-5. **Guided tour** — beekeeper (6 steps) and officer (5 steps) run start → Finish; steps are read aloud in the selected language (Hindi included).
-6. **Ask HoneyChain** — answers in the language of the question (en / hi / bn / ta / kn / te / mr) from live records and product knowledge. Full conversational AI needs `GEMINI_API_KEY` on the server.
-7. **PK-LIVE** and other previously verified flows still work after the above.
+## Table of contents
 
-## Setup
+1. [Problem statement](#problem-statement)
+2. [Problem solution](#problem-solution)
+3. [Business model (B2G)](#business-model-b2g)
+4. [User flow](#user-flow)
+5. [Logins and use cases](#logins-and-use-cases)
+6. [How each feature solves each problem](#how-each-feature-solves-each-problem)
+7. [Website guide](#website-guide)
+8. [Technical architecture](#technical-architecture)
+9. [Setup and run](#setup-and-run)
+10. [Deploy](#deploy)
+11. [What is simulated vs real](#what-is-simulated-vs-real)
+12. [Known gaps](#known-gaps)
+13. [Conclusion](#conclusion)
 
-Python **3.11** from the repository root. Render uses 3.11.9. `numpy` is pinned to **2.4.6** (3.11 wheels; 2.5.x needs Python 3.12).
+---
+
+## Problem statement
+
+Four problems from the original SIH / Honey Mission brief, unchanged:
+
+1. **Counterfeit honey** — adulterated or mislabelled jars reach the market. There is no reliable check that the kilograms on the label match what left the hive, and no shared record a field officer can defend.
+2. **Low consumer trust** — a buyer is asked to believe a sticker. There is no simple, public check they can run themselves.
+3. **Weak market linkages** — beekeepers rarely see standing demand or a transparent price. Sale often depends on a middleman.
+4. **Lack of traceability and hive-management support** — field officers cannot prove a batch’s path from hive to shop, and beekeepers have little support for colony health and harvest records.
+
+These are **governance problems**, not only shop-floor problems. KVIC’s Honey Mission needs a field system of record: who harvested, what the scale said, whether the lab passed the batch, and whether the jar a citizen scans still matches that chain.
+
+---
+
+## Problem solution
+
+HoneyChain is a role-scoped web system for KVIC clusters.
+
+| Gap | What HoneyChain does |
+| --- | --- |
+| Counterfeit honey | Harvest weight is corroborated against the hive scale. A **weight oracle** allows commit only if declared kg stay within **10%** of sensor-logged harvests. Lab **pass** is required before commit. A passing batch is sealed on a hash-chain. CloneWatch flags implausible scans and oracle failures. |
+| Low consumer trust | Anyone opens `/verify` with no login. The passport recomputes ledger integrity from live rows. A QR on the package points at that page. |
+| Weak market linkages | A demand board shows standing buyers and recent verified sale prices. Live listings are separated from example/seed rows. |
+| Traceability and hive care | Role-gated harvests, batches, lab desk, ledger, and cluster view. Colony insights classify inspection-risk from live temperature/humidity and explain **why**. |
+
+**What this is not:** a public blockchain, an ESP32 firmware product, or a veterinary diagnosis engine. The prototype proves the **workflow and the rules**. Hardware and a national chain can sit on the same APIs later.
+
+---
+
+## Business model (B2G)
+
+HoneyChain is **business-to-government**, not a consumer app that sells jars.
+
+**Buyer:** KVIC and allied Honey Mission / state horticulture / cluster agencies. They procure a hosted system of record for the clusters they already fund.
+
+**Users (not payers):** beekeepers, field officers, lab inspectors, and citizens. The citizen never pays to verify a jar. That is a public good the mission already owes the market.
+
+**What government is buying**
+
+- A cluster operating system: hive register, harvest log, lab queue, oracle, ledger, QR passport.
+- Inspection capacity: CloneWatch and lab-gated commit instead of paper that can be copied.
+- Farmer-facing tools: own-hive dashboard, insights, demand board — so the mission’s income goal is not only a poster.
+- A public verify URL that any FSSAI awareness campaign can print on a pack.
+
+**How it is sold**
+
+| Motion | Meaning |
+| --- | --- |
+| **Licence per cluster / per district** | Annual SaaS for one KVIC cluster: officers, lab desk, beekeeper accounts, hosted API. |
+| **Per-hive telemetry add-on** | Optional once real scales exist. This prototype uses the same `/api/sensor-readings` a field node would call. |
+| **Mission rollout, not app-store** | Onboarding is staff accounts + beekeeper register, languages already in the UI, not a B2C download campaign. |
+
+**Why B2G fits**
+
+- Trust in honey is a **regulatory** outcome. A private brand ledger does not bind the next packer.
+- Officers and labs are already on the government payroll. The software has to match their desks.
+- Consumers must verify **without an account**, or the mission still fails the trust test.
+- Market linkage is a public marketplace overlay, not a commission-taking private exchange in this design.
+
+Revenue is the government contract. Impact is authentic kg on the ledger and a jar a citizen can check.
+
+---
+
+## User flow
+
+End-to-end path from colony to citizen:
+
+```mermaid
+flowchart TD
+  A[Beekeeper logs harvest against hive scale] --> B[Officer groups harvests into a draft batch]
+  B --> C[Lab records moisture and purity]
+  C -->|fail| X[Commit blocked]
+  C -->|pass| D[Officer runs weight oracle]
+  D -->|declared kg outside 10 percent| X
+  D -->|pass| E[Batch sealed on hash-chain]
+  E --> F[Package ID + QR issued]
+  F --> G[Citizen scans /verify — no login]
+  G --> H[CloneWatch watches scan volume and travel]
+```
+
+**Day in the product**
+
+1. A hive has temperature, humidity, and weight (simulator in this prototype; starter readings on a newly registered hive).
+2. The beekeeper logs kg and moisture on **My Harvests**. The API refuses a harvest with no scale reading.
+3. The officer creates a **pending** draft. Oracle commit before lab pass is refused.
+4. The lab records a **pass**. The officer runs oracle + commit. A **new** package ID and QR appear.
+5. Anyone verifies that ID on **Verify your honey**. Repeat scans in impossible places surface on **CloneWatch**.
+6. Buyers and keepers meet on **Market Linkage**. The model card stays honest about held-out scores.
+
+---
+
+## Logins and use cases
+
+Beekeepers: **Sign in** at `/login` or **Register** at `/register`. Use the **short username**, not only the display name. Staff: `/staff` or `/login`.
+
+Seeded demo accounts (first backend start):
+
+| Role | Username | Password | Lands on | Use case |
+| --- | --- | --- | --- | --- |
+| Beekeeper | `beekeeper` | `Beekeeper123!` | `/app/dashboard` | Own hives, harvest, monitor, insights, market, report |
+| KVIC officer | `officer` | `Officer123!` | `/app/cluster` | Cluster, batch review, alerts, ledger, CloneWatch, market |
+| Lab inspector | `lab` | `Lab123!` | `/app/lab` | Pending drafts: moisture, purity, pass/fail |
+| KVIC admin | `admin` | `Admin123!` | `/app/dashboard` | Full system, users, model, analytics, tamper-test |
+| Consumer | — | — | `/` `/verify` | No login. Passport + public market + model card |
+
+Self-registration creates a beekeeper, assigns a hive, and writes starter scale readings so harvest and insights work on hosted demo (no local simulator).
+
+**Do not** use forgot-password with a made-up code. Request a reset, copy the **6-digit** demo code, then save the new password.
+
+### Beekeeper
+
+Sees only assigned colonies. Logs and corrects pending harvests. Reads live monitor and inspection-risk insights. Posts interest on live demand. Exports a personal harvest/sale report.
+
+### KVIC field officer
+
+Sees the cluster in their region. Drafts batches, runs oracle after lab pass, reads ledger integrity and CloneWatch, posts demand.
+
+### Lab inspector
+
+Sees drafts with `lab_test_result == pending`. A fail blocks commit. A pass unlocks oracle.
+
+### KVIC admin
+
+Registers hives (optional beekeeper assignment + starter telemetry), manages staff, runs tamper-test, reads cluster analytics. Analytics pins are **regional centroids, not live GPS**.
+
+### Consumer
+
+Home trust counts, How it works, Verify, public market, public model card. Never asked to create an account to check a jar.
+
+---
+
+## How each feature solves each problem
+
+| Feature | Counterfeit | Consumer trust | Market linkage | Traceability / hive care |
+| --- | --- | --- | --- | --- |
+| Hive register + starter / live telemetry | Scale is the source of harvest kg | Public hive counts | — | Colony record for the officer |
+| My Harvests | Declared kg tied to last scale reading | — | Volume for later sale | Beekeeper’s own log |
+| Lab desk | Fail blocks a dishonest or wet batch | — | — | Independent check |
+| Weight oracle (10%) | Over-declared batches cannot seal | — | — | Officer has a hard rule |
+| Hash-chain ledger + tamper-test | Sealed batch cannot silently change | Verify recomputes hashes live | — | Path from hive to package |
+| Package QR | Physical jar points at one ID | Scan with no account | — | Package is the shop-facing record |
+| Consumer Verify | Fake IDs fail integrity | Public passport | — | Anyone can audit |
+| CloneWatch | Repeat / impossible scans flagged | — | — | Officer sees abuse |
+| Colony insights | — | Public model card keeps scores honest | — | Inspection-risk + **why** |
+| Market Linkage | — | — | Live demand vs example listings | Beekeeper sees price |
+| Multilingual UI + Ask | — | Citizen can read the passport | — | Field users in 7 languages |
+| Role-gated JWT | Staff cannot wear each other’s desks | — | — | Access is part of traceability |
+
+**Demo-ready loop:** harvest → pending draft → lab pass → oracle commit → **new** package + QR → Verify (not only seed `PK-LIVE`).
+
+---
+
+## Website guide
+
+Prefer https://honeychain-y8j6.onrender.com so QR and API share a host.
+
+### Public (no login)
+
+| Page | Where | What to do |
+| --- | --- | --- |
+| Home | `/` | Trust counts from `/api/public/stats`. Switch language. |
+| How it works | `/how-it-works` | Four steps: sensors → batch/lab → ledger → QR. |
+| Model card | `/model` | Held-out health accuracy **40.0%**. Say that number. Do not inflate it. |
+| Market preview | `/market` | Public demand/sales. Sign in to trade. |
+| Verify | `/verify` | Try `PK-LIVE`, then a package you just issued. |
+| Sign in / Register / Staff | `/login` `/register` `/staff` | Beekeeper vs KVIC desk. |
+
+### After sign-in
+
+| Feature | Route | Guide |
+| --- | --- | --- |
+| Dashboard | `/app/dashboard` | Beekeeper: own colony. Admin: hive picker, live temps, **Register a hive** (assign keeper, starter readings). |
+| Hive monitor | `/app/monitor` | Charts of temperature, humidity, weight. |
+| My Harvests | `/app/harvests` | Pick hive → Review harvest → Create harvest. Empty hive list means refresh once so an assigned hive can appear. |
+| Batch review | `/app/batches` | Log harvest if needed, create **pending** draft, wait for lab, then **Run oracle and commit**. **JUST ISSUED** is the new QR. |
+| Lab desk | `/app/lab` | Select queued draft, record pass/fail. |
+| Ledger | `/app/ledger` | Recomputed chain. Admin: tamper-test then reset. |
+| CloneWatch | `/app/clonewatch` | Oracle failures and flagged scans. |
+| Insights | `/app/insights` | Status, confidence, class probabilities, reasons, top features. Not a disease name. |
+| Market | `/app/market` | Live board first. Seed rows only under **Example listings**. |
+| Alerts | `/app/alerts` | Local queue only — not WhatsApp. |
+| Users | `/app/users` | Admin creates officer / lab / admin. |
+| Analytics | `/app/analytics` | Map + kg from ledger-linked sales. |
+| Ask | orange **Ask** | Same language as the question. Needs `GEMINI_API_KEY` on the server for full Gemini; otherwise live records. |
+| Tour | Start tour | Beekeeper and officer. Docked card; Finish to exit. |
+
+**Judging path (short):** home → verify `PK-LIVE` → admin harvest → pending draft → lab pass → oracle commit → verify **new** ID → CloneWatch → market → model 40%.
+
+---
+
+## Technical architecture
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    UI[React + Vite UI]
+    SIM[Hive simulator]
+  end
+  subgraph api [FastAPI]
+    R[Routers]
+    SVC[Services]
+    DB[(SQLite)]
+  end
+  UI -->|/api JWT or public| R
+  SIM -->|POST /api/sensor-readings| R
+  R --> SVC --> DB
+  SVC --> QR[QR PNG + verify passport]
+  SVC --> ML[RandomForest health + LinearRegression yield]
+  SVC --> GEM[Gemini Ask — optional]
+```
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| API | FastAPI, Python 3.11 | Original hive/sensor JSON contracts stay stable. |
+| Data | SQLAlchemy + SQLite | One file for the prototype. Render disk is ephemeral. |
+| Auth | bcrypt + JWT access (15 min) + refresh | Role gates on every staff desk. |
+| UI | React 18, Vite, i18next | Seven Indian languages; IDs and hashes stay untranslated. |
+| Oracle | 10% band vs sum of sensor-logged harvest kg | Hard anti-overdeclare rule. |
+| Ledger | SHA-256 of canonical batch JSON + previous hash | Integrity is recomputed, not a stored tick. |
+| QR | PNG of `{public origin}/verify?package_id=…` | `HONEYCHAIN_PUBLIC_ORIGIN` so production QR is not localhost. |
+| ML | MSPB D1/D2, live temp/humidity only | Inspection-risk, not pathogen ID. Weight forecast is this hive’s scale. |
+| Ask | Gemini if keyed, else grounded fallback | Answers in the question’s language. |
+
+**Repository**
+
+```
+HoneyChain/
+  backend/     FastAPI app, services, routers, seed
+  web/         React UI (judging interface)
+  simulator/   Multi-hive telemetry generator
+  ml/          MSPB prep, training, metrics
+  tests/       pytest
+  frontend/    Streamlit leftover — not the judging UI
+```
+
+**Main API groups:** `/api/hives` `/api/sensor-readings` `/api/harvests` `/api/batches/{id}/commit` `/api/lab` `/api/packages` `/api/verify` `/api/clonewatch` `/api/insights` `/api/auth` `/api/public/*` `/api/assistant/ask`
+
+---
+
+## Setup and run
+
+**Prerequisites:** Python **3.11**, Node 20+, Git. `numpy` is pinned to **2.4.6** (2.5.x needs Python 3.12). `requirements.txt` must stay **UTF-8**.
 
 ```powershell
+git clone https://github.com/krishnakeshab-banik/HoneyChain.git
+cd HoneyChain
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-macOS / Linux:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Frontend:
-
-```powershell
 cd web
 npm install
+cd ..
+copy .env.example .env
 ```
 
-Copy `.env.example` to `.env` and fill secrets. Never commit `.env`.
+Never commit `.env`.
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | For Ask / photo observation | Google AI Studio key. Strip spaces. Same value on Render. |
-| `HONEYCHAIN_JWT_SECRET` | Production | JWT signing. Generate on Render; do not use the local default. |
-| `HONEYCHAIN_PUBLIC_ORIGIN` | Production QR | e.g. `https://honeychain-y8j6.onrender.com` so scanned codes are not localhost. Render also uses `RENDER_EXTERNAL_URL` when set. |
-| `CORS_ORIGINS` | If UI is on another host | Comma-separated origins, e.g. `https://honey-chain-coral.vercel.app` |
-| `HONEYCHAIN_DATABASE_URL` | Optional | Defaults to SQLite `honeychain.db` in the repo root. |
-| `HONEYCHAIN_SKIP_DEMO_SEED` | Tests | Set to `1` so pytest does not load the day-one story. |
-| `PYTHON_VERSION` | Render | `3.11.9` |
+| Variable | Purpose |
+| --- | --- |
+| `GEMINI_API_KEY` | Ask / photo notes. Set on **Render**, not only locally. |
+| `HONEYCHAIN_JWT_SECRET` | Production JWT secret. |
+| `HONEYCHAIN_PUBLIC_ORIGIN` | Public QR host, e.g. `https://honeychain-y8j6.onrender.com` |
+| `CORS_ORIGINS` | Extra UI host, e.g. Vercel. |
+| `HONEYCHAIN_DATABASE_URL` | Optional. Default `honeychain.db`. |
+| `PYTHON_VERSION` | Render: `3.11.9` |
 
-## Run locally
-
-Three terminals, all from the repository root.
-
-**1. Backend**
+Three terminals from the repo root:
 
 ```powershell
 python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-**2. Simulator** (live hive numbers)
-
-```powershell
 python simulator/hive_simulator.py
-```
-
-**3. React UI**
-
-```powershell
 cd web
 npm run dev
 ```
 
-- API: http://127.0.0.1:8000  
-- Docs: http://127.0.0.1:8000/docs  
-- React UI: http://127.0.0.1:5173 (`/api` is proxied to the backend)
+Open http://127.0.0.1:5173. `python -m pytest` walks telemetry → harvest → oracle → ledger → QR → verify.
 
-Streamlit (`python -m streamlit run frontend/app.py`) is an internal leftover. Beekeepers, officers, lab, and consumers use the React app.
+Seed helpers: `python -m backend.seed` and `python -m backend.seed --reset` (reset refuses if live ledger blocks exist).
 
-## Demo accounts
+---
 
-Seeded on first backend start. Beekeepers use **Sign in** (`/login`). Officers, lab, and admin can also use one-click desks on **Staff** (`/staff`).
+## Deploy
 
-| Role | Username | Password | Landing |
-| --- | --- | --- | --- |
-| Beekeeper | `beekeeper` | `Beekeeper123!` | Own hive `IN-WB-001`, harvests, insights, market |
-| Cluster / KVIC officer | `officer` | `Officer123!` | West Bengal cluster, Batch Review, ledger, CloneWatch |
-| Lab inspector | `lab` | `Lab123!` | Lab desk: moisture / purity on **pending** drafts |
-| KVIC admin | `admin` | `Admin123!` | Full system, tamper-test, users, model card |
-| Consumer | *(none)* | — | Home + **Verify your honey**. No login. |
+**Render (recommended):** Python 3 web service, branch `main`.
 
-Beekeeper self-registration, password reset, and staff-account creation exist as screens but are **not** a judging path — use the seeded accounts.
+- Start: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT` — not Django gunicorn.
+- Build installs pip deps, Node 20, then `cd web && npm ci && npm run build` so FastAPI serves `web/dist`.
+- Env: `PYTHON_VERSION=3.11.9`, generated JWT secret, `GEMINI_API_KEY`, `HONEYCHAIN_PUBLIC_ORIGIN`.
+- No simulator process on Render. SQLite resets on deploy.
 
-JWT access tokens expire in 15 minutes and rotate via `/api/auth/refresh`. Role-scoped reads: a beekeeper token cannot read hive `DE-001`.
+**Vercel (optional UI):** Vite root `web`. Rewrites `/api/*` and `/health` to Render; other paths to `index.html`. Do not set `VITE_API_URL` if those rewrites are on.
 
-### Sitemap
+See `render.yaml` and `vercel.json`.
 
-| Path | Who |
-| --- | --- |
-| `/` `/how-it-works` `/model` `/verify` `/market` `/staff` `/login` `/register` `/forgot-password` `/reset-password` | Public |
-| `/app/dashboard` `/app/harvests` `/app/monitor` `/app/insights` `/app/market` `/app/report` | Beekeeper |
-| `/app/cluster` `/app/batches` `/app/alerts` `/app/ledger` `/app/clonewatch` | Officer |
-| `/app/lab` | Lab |
-| `/app/ledger` `/app/clonewatch` `/app/users` `/app/model` `/app/analytics` plus pages above | Admin |
-
-UI strings switch across English, Hindi, Bengali, Tamil, Kannada, Telugu, and Marathi. Batch IDs, hive names, hashes, and dates stay in their original form.
-
-SQLite file: `honeychain.db` in the repo root. A **local** restart does not wipe data. On Render, SQLite is ephemeral (redeploy reseeds).
-
-## Demo journey (judging)
-
-1. Open https://honeychain-y8j6.onrender.com (or local 5173 with backend + simulator). Wait for `/health`.
-2. Public home: hive / verified-batch / flagged-scan counts come from `/api/public/stats`.
-3. **Verify your honey** with `PK-LIVE` — chain verified, no login.
-4. Sign in as `admin`. On **Batch Review**, create a harvest (after the simulator has ticks locally; hosted demo uses seed telemetry).
-5. Create a **pending** draft (declared kg within 10% of sensor-logged harvest). Commit before lab must fail.
-6. Sign in as `lab`. The draft is in the queue. **Record lab result** = pass.
-7. Sign in as `officer` or `admin`. **Run oracle and commit**. A **JUST ISSUED** card shows a new package ID and QR.
-8. Open **Consumer Verify** with that new ID (not `PK-LIVE`). Expect **Chain verified**.
-9. Scan the QR — it must open the **public** `/verify?package_id=…` URL, not localhost.
-10. Verify once in Kolkata and again in Bremen for a CloneWatch distance flag.
-11. **Market Linkage**: live board first; Howrah / `DEM-DEMO-WB` only under **Example listings**.
-12. **Model**: 40.0% health accuracy, ~17.6 kg honey RMSE — say this out loud; it is a real held-out score.
-13. Optional: language → हिन्दी → **Start tour** (beekeeper or officer) through **Finish**.
-14. Optional: **Ask** — English and Hindi questions about this hive / harvest / oracle / QR.
+---
 
 ## What is simulated vs real
 
 | Piece | Honest status |
 | --- | --- |
-| Hive sensor values | **Simulated.** `simulator/hive_simulator.py`, `source=simulated`. No live ESP32. |
-| DE-001 | **Simulated temperate hive.** Fed by the simulator. |
-| Offline/online IoT | **Simulated.** Local online flag + `data/simulator_queue.json`. |
-| Harvest / batch / package | **Real app logic** in SQLite. Typed kilograms are demo inputs. |
-| Oracle | **Real.** Declared weight within 10% of sensor-logged harvest sum. |
-| Ledger | **Real local SHA-256 hash-chain.** Not Fabric or Polygon. |
-| QR + consumer passport | **Real.** PNG encodes `{public origin}/verify?package_id=…`. Verify recomputes the ledger and logs a scan. |
-| Scan locations | **Simulated** (Kolkata / Mumbai / Bremen). |
-| CloneWatch | **Real rules** on those scans. |
-| Colony health + yield | **Real scikit-learn** on MSPB D1/D2. Held-out health accuracy **40%** (n=25). Binary collapse scored 52%, still below a 58.8% majority baseline — the 40% figure was kept. |
-| Ask HoneyChain | **Gemini** when `GEMINI_API_KEY` is set; otherwise live records + product facts in the question’s language. |
-| Ledger tamper-test | **Real.** Admin tampers `declared_weight_kg`; integrity recomputes. **Reset tamper** restores it. |
+| Hive sensors | Simulated (`source=simulated`). No ESP32. New hives get starter readings so the hosted demo is usable. |
+| Harvest / batch / package | Real SQLite application logic. |
+| Oracle | Real 10% weight rule. |
+| Ledger | Real local hash-chain. Not Fabric or Polygon. |
+| QR + verify | Real PNG + live recompute. |
+| CloneWatch | Real rules on those scans. Scan cities are presets. |
+| Health / yield models | Real sklearn. **40%** held-out health accuracy. |
+| Ask HoneyChain | Gemini if keyed; else live records + product facts. |
+| Alerts | Local queue. No SMS/WhatsApp gateway. |
+| Seller map | Regional centroids, not live GPS. |
 
-## Seeded reference data
-
-One-time synthetic seed; later activity is live. Skip with `HONEYCHAIN_SKIP_DEMO_SEED=1` (tests do this).
-
-| ID | What |
-| --- | --- |
-| `IN-WB-001` | West Bengal demo hive |
-| `DE-001` | Bremen demo hive |
-| `IN-WB-002` `IN-WB-003` `IN-KA-001` | Extra cluster hives |
-| `BK-WB-01` | Ananya Roy |
-| `BK-DE-01` | Lena Hoffmann |
-| `BT-DEMO-01` `BT-DEMO-02` | Oracle-passed batches |
-| `PK-LIVE` | Seed package used on Consumer Verify |
-| `DEM-DEMO-WB` | One-time example demand (shown in **Example listings**, not the live board) |
-
-```powershell
-python -m backend.seed
-python -m backend.seed --reset
-```
-
-`--reset` refuses if live (non-demo) ledger blocks already exist.
-
-## Deploy
-
-### Render (recommended — one service)
-
-Python 3 web service, **branch `main`**.
-
-- **Build:**  
-  `pip install -r requirements.txt && curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz | tar -xJ && export PATH="$PWD/node-v20.18.1-linux-x64/bin:$PATH" && cd web && npm ci && npm run build`
-- **Start:** `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`  
-  Do **not** use `gunicorn your_application.wsgi`.
-- **Env:** `PYTHON_VERSION=3.11.9`, `HONEYCHAIN_JWT_SECRET` (generate), `GEMINI_API_KEY`, `HONEYCHAIN_PUBLIC_ORIGIN=https://honeychain-y8j6.onrender.com`
-- If pip fails on `numpy==2.5.3`, you are on an old commit — `main` pins `numpy==2.4.6` for 3.11.
-- `requirements.txt` must be UTF-8 (not UTF-16).
-- SQLite does not persist across Render deploys. The hive simulator does not run there.
-
-`render.yaml` in the repo matches this.
-
-### Vercel (optional frontend)
-
-Root directory `web`, framework **Vite**. `web/vercel.json` rewrites `/api/*` and `/health` to Render and falls other paths back to `index.html` (so refresh on `/login` does not 404).
-
-Do **not** set `VITE_API_URL` if you use those rewrites. On Render, set `CORS_ORIGINS` to the Vercel origin if the browser calls Render directly.
-
-## Tests
-
-```powershell
-python -m pytest
-```
-
-`tests/test_end_to_end.py` walks telemetry → harvest → oracle → ledger → QR → verify → CloneWatch.
+---
 
 ## Known gaps
 
-- Self-registration, password reset, and creating staff accounts are not a live demo path.
-- Ask HoneyChain’s full conversational layer needs `GEMINI_API_KEY` on the **server** (Render), not only in local `.env`.
-- Colony-health **40%** is a real held-out score. Do not present it as a strong classifier.
-- Hosted demo has no running simulator; hive numbers there are seed + whatever was written before the last deploy.
+- Self-registration and password reset work for the demo path; they are not a production identity provider.
+- Conversational Ask needs `GEMINI_API_KEY` on the server.
+- 40% colony-health accuracy is truthful, not a strong classifier.
+- Hosted demo has no always-on simulator; starter readings cover new hives.
+- No public blockchain, live GPS, or WhatsApp/SMS gateway.
 
-## API map
+---
 
-- `GET /` `GET /health`
-- `GET/POST /api/hives` `GET /api/hives/{id}`
-- `POST /api/sensor-readings` `GET /api/hives/{id}/sensor-readings` `GET /api/hives/{id}/summary`
-- `GET /api/beekeepers` harvest CRUD under `/api/harvests`
-- batch CRUD plus `POST /api/batches/{id}/commit` and `GET /api/oracle-events`
-- package CRUD plus `GET /api/packages/{id}/qr`
-- `GET /api/ledger/chain` `GET /api/ledger/batches/{id}` `GET /api/ledger/integrity`
-- `POST /api/ledger/tamper-test` `POST /api/ledger/tamper-reset` (admin)
-- `GET /api/ml/transparency` (admin) `GET /api/public/model`
-- `GET /api/demo/status` `POST /api/demo/link` (admin)
-- `GET/POST /api/verify/{package_id}`
-- `GET /api/clonewatch`
-- `GET /api/insights/{hive_id}`
-- `POST /api/assistant/ask` `POST /api/assistant/observe`
-- `POST /api/auth/login` `POST /api/auth/register` `GET /api/auth/me` `PATCH /api/auth/me/language` `GET /api/auth/me/hives`
-- `GET/POST /api/lab/results` `GET /api/lab/queue`
-- `GET/POST /api/market/demands` `POST /api/market/demands/{id}/interest` `GET /api/market/prices` `POST /api/market/sales`
-- `GET /api/public/stats` `GET /api/public/impact` `GET /api/public/market`
-- `GET /api/analytics/admin` `GET /api/analytics/seller`
-- `GET/POST /api/alerts`
+## Conclusion
+
+Honey Mission fails when a jar is only a label, a harvest is only a notebook, and a beekeeper never sees a price. HoneyChain is the B2G field record for that mission: **scale-backed harvests, lab-gated commit, a hash-chain a citizen can recompute, and a demand board that is not a middleman’s whisper.**
+
+The prototype is honest about what it is. Sensors are simulated. The chain is local. The health model is a weak inspection-risk score and says so. What is not simulated is the rule set government actually needs: you cannot seal kilograms the hive never carried, you cannot skip the lab, and you cannot hide a broken chain from the person holding the jar.
+
+That is the product to procure, cluster by cluster — not another poster, and not a private blockchain slogan. A verified kilogram in a KVIC district is the finish line.

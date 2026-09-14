@@ -14,6 +14,8 @@ export default function Overview({ canRegister = true }) {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [demo, setDemo] = useState(null);
+  const [keepers, setKeepers] = useState([]);
+  const [beekeeperId, setBeekeeperId] = useState("");
   const [form, setForm] = useState({
     hive_id: "IN-KL-002",
     name: "Kerala Field Hive",
@@ -31,6 +33,14 @@ export default function Overview({ canRegister = true }) {
     setHiveId((current) => current || list.find((item) => item.hive_id === "IN-WB-001")?.hive_id || list[0]?.hive_id || "");
   }
 
+  async function loadKeepers() {
+    if (!canRegister) {
+      return;
+    }
+    const list = await apiGet("/api/beekeepers").catch(() => []);
+    setKeepers(list);
+  }
+
   async function loadLive(id) {
     if (!id) {
       return;
@@ -39,7 +49,16 @@ export default function Overview({ canRegister = true }) {
       apiGet(`/api/hives/${id}/summary`),
       apiGet(`/api/hives/${id}`),
     ]);
-    setSummary(nextSummary);
+    if (!nextSummary?.latest) {
+      try {
+        await apiPost(`/api/hives/${id}/starter-telemetry`, {});
+        setSummary(await apiGet(`/api/hives/${id}/summary`));
+      } catch {
+        setSummary(nextSummary);
+      }
+    } else {
+      setSummary(nextSummary);
+    }
     setHive(nextHive);
   }
 
@@ -47,6 +66,7 @@ export default function Overview({ canRegister = true }) {
     let cancelled = false;
     setLoading(true);
     loadHives()
+      .then(() => loadKeepers())
       .catch((err) => {
         if (!cancelled) {
           setError(err.message);
@@ -89,7 +109,8 @@ export default function Overview({ canRegister = true }) {
     setRegistering(true);
     setError("");
     try {
-      await apiSend("POST", "/api/hives", { ...form, active: true });
+      const query = beekeeperId ? `?beekeeper_id=${encodeURIComponent(beekeeperId)}` : "";
+      await apiSend("POST", `/api/hives${query}`, { ...form, active: true });
       await loadHives();
       setHiveId(form.hive_id);
     } catch (err) {
@@ -152,8 +173,7 @@ export default function Overview({ canRegister = true }) {
 
       {hiveId && summary && !latest && (
         <Banner tone="warn">
-          Nothing here yet — hive {hiveId} has no sensor readings. Start the simulator
-          (`python simulator/hive_simulator.py`) or wait for queued readings to sync.
+          Hive {hiveId} still has no sensor readings. Starter telemetry is being written so harvests and insights can run without the local simulator.
         </Banner>
       )}
 
@@ -197,10 +217,21 @@ export default function Overview({ canRegister = true }) {
         </div>
       )}
       {canRegister && <h2>Register a hive</h2>}
-      {canRegister && <p className="purpose">Creates a real hive record via POST /api/hives. The new hive appears in this list immediately.</p>}
+      {canRegister && <p className="purpose">Creates a hive via POST /api/hives, writes starter scale readings, and can assign it to a beekeeper so harvest logging works immediately.</p>}
       {canRegister && (
       <form className="card" onSubmit={registerHive}>
         <div className="grid-2">
+          <div>
+            <label htmlFor="assign_beekeeper">Assign to beekeeper</label>
+            <select id="assign_beekeeper" value={beekeeperId} onChange={(event) => setBeekeeperId(event.target.value)}>
+              <option value="">Unassigned (admin/officer only)</option>
+              {keepers.map((keeper) => (
+                <option key={keeper.beekeeper_id} value={keeper.beekeeper_id}>
+                  {keeper.beekeeper_id} · {keeper.name}
+                </option>
+              ))}
+            </select>
+          </div>
           {Object.entries(form).map(([key, value]) => (
             <div key={key}>
               <label htmlFor={key}>{key.replaceAll("_", " ")}</label>

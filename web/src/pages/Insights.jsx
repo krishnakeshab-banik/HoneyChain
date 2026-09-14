@@ -73,12 +73,60 @@ export default function Insights() {
           <p className="muted">{insights.health.model_name}. {insights.health.trained_on}</p>
           <p className="muted">{insights.forecast.model_name}. {insights.forecast.trained_on}</p>
           <div className="card">
+            <p className="page-kicker">WHAT THIS STATUS MEANS</p>
+            <p>{insights.health.status_meaning || insights.computed_explanation}</p>
+            {insights.health.reasons?.length > 0 && (
+              <ul>
+                {insights.health.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {insights.health.class_probabilities && Object.keys(insights.health.class_probabilities).length > 0 && (
+            <div className="card">
+              <p className="page-kicker">CLASS PROBABILITIES</p>
+              <p className="muted">How the RandomForest split probability across inspection-risk classes for this hive.</p>
+              <div className="grid-3">
+                {Object.entries(insights.health.class_probabilities).map(([label, value]) => (
+                  <Metric key={label} label={label} value={`${(Number(value) * 100).toFixed(1)}%`} />
+                ))}
+              </div>
+            </div>
+          )}
+          {insights.health.drivers?.length > 0 && (
+            <div className="card">
+              <p className="page-kicker">WHY THE MODEL LEANED THIS WAY</p>
+              <p className="muted">Top live features by model importance, compared with a typical brood-nest band. Weight is shown in the live-reading note; it is not an MSPB training feature.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>This hive</th>
+                    <th>Importance</th>
+                    <th>Vs typical</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insights.health.drivers.map((row) => (
+                    <tr key={row.feature}>
+                      <td>{row.feature}</td>
+                      <td>{Number(row.value).toFixed(3)}</td>
+                      <td>{(Number(row.importance) * 100).toFixed(1)}%</td>
+                      <td>{row.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="card">
             <p className="page-kicker">FROM THE LIVE READINGS</p>
             <p>{insights.computed_explanation || "Awaiting enough sensor history to explain this hive."}</p>
           </div>
           <div className="card ai-card">
             <p className="page-kicker">AI EXPLANATION</p>
-            <p>{insights.ai_explanation || "AI narrative is not available right now. The numbers above are still from the live models."}</p>
+            <p>{insights.ai_explanation || "AI narrative is optional. The status, probabilities, and reasons above are still from the live sensor history and the MSPB health model."}</p>
             <p className="ai-tag">{insights.ai_label}</p>
           </div>
           <label htmlFor="comb-photo">Optional comb photo (preliminary observation only)</label>

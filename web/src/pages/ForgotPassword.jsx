@@ -29,7 +29,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <AuthShell kicker="RESET" title="Forgot password" lead="We'll give you a reset code if that username exists.">
+    <AuthShell kicker="RESET" title="Forgot password" lead="Enter the short username you use to sign in (not your full name). We'll show a reset code if that account exists.">
       <form className="card auth-card" onSubmit={onSubmit} noValidate>
         {error && <Banner tone="bad">{error}</Banner>}
         {result && (
@@ -38,7 +38,7 @@ export default function ForgotPassword() {
             {result.reset_code && (
               <p>
                 Demo reset code: <strong>{result.reset_code}</strong>.{" "}
-                <Link to={`/reset-password?username=${encodeURIComponent(username)}`}>Continue to reset</Link>
+                <Link to={`/reset-password?username=${encodeURIComponent(result.username || username)}`}>Continue to reset</Link>
               </p>
             )}
           </Banner>

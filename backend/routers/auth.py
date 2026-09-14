@@ -59,7 +59,7 @@ def forgot_password(payload: ForgotRequest, session: Session = Depends(get_db)) 
 
 @router.post("/reset-password")
 def reset_password(payload: ResetRequest, session: Session = Depends(get_db)) -> dict[str, str]:
-    return auth_service.reset_password(session, payload.username, payload.code, payload.password)
+    return auth_service.reset_password(session, payload.username, payload.code or "", payload.password or "")
 
 
 @router.get("/me", response_model=UserOut)

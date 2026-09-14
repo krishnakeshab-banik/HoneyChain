@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.models.beekeeper import BeekeeperRecord
@@ -152,10 +153,30 @@ def decode_refresh(session: Session, token: str) -> UserRecord:
     return load_user(session, str(username))
 
 
+def find_user(session: Session, identifier: str) -> UserRecord | None:
+    ident = (identifier or "").strip()
+    if not ident:
+        return None
+    direct = session.get(UserRecord, ident)
+    if direct is not None:
+        return direct
+    lowered = ident.lower()
+    by_username = session.scalars(select(UserRecord).where(func.lower(UserRecord.username) == lowered)).all()
+    if len(by_username) == 1:
+        return by_username[0]
+    by_name = session.scalars(select(UserRecord).where(func.lower(UserRecord.display_name) == lowered)).all()
+    if len(by_name) == 1:
+        return by_name[0]
+    return None
+
+
 def authenticate(session: Session, username: str, password: str) -> TokenOut:
-    record = session.get(UserRecord, username)
+    record = find_user(session, username)
     if record is None:
-        raise HTTPException(status_code=401, detail="No account found for that username.")
+        raise HTTPException(
+            status_code=401,
+            detail="No account found for that username. Use the short sign-in name from registration, not your full name.",
+        )
     if not record.active:
         raise HTTPException(status_code=403, detail="This account is not active.")
     if not verify_password(password, record.password_hash):
@@ -223,19 +244,25 @@ def register_beekeeper(session: Session, payload: RegisterRequest) -> TokenOut:
         )
     )
     session.flush()
+    from backend.services.hive_bootstrap import provision_colony_for_beekeeper
+
+    provision_colony_for_beekeeper(session, session.get(UserRecord, payload.username))
     return authenticate(session, payload.username, payload.password)
 
 
 def request_password_reset(session: Session, username: str) -> dict[str, str]:
-    record = session.get(UserRecord, username)
+    record = find_user(session, username)
     if record is None:
-        raise HTTPException(status_code=401, detail="No account found for that username.")
+        raise HTTPException(
+            status_code=401,
+            detail="No account found for that username. Use the short sign-in name, not your full name.",
+        )
     if not record.active:
         raise HTTPException(status_code=403, detail="This account is not active.")
     code = f"{secrets.randbelow(1000000):06d}"
     session.merge(
         PasswordResetRecord(
-            username=username,
+            username=record.username,
             code_hash=hash_password(code),
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=20),
         )
@@ -244,13 +271,16 @@ def request_password_reset(session: Session, username: str) -> dict[str, str]:
     # Demo-only: no email gateway is wired. The code is returned so the
     # forgot-password screen can complete a real reset without SMS/SMTP.
     return {
-        "detail": "A reset code was issued for this account.",
+        "detail": f"A reset code was issued for username '{record.username}'.",
         "reset_code": code,
+        "username": record.username,
     }
 
 
 def reset_password(session: Session, username: str, code: str, password: str) -> dict[str, str]:
-    stored = session.get(PasswordResetRecord, username)
+    record = find_user(session, username)
+    lookup = record.username if record is not None else username.strip()
+    stored = session.get(PasswordResetRecord, lookup)
     if stored is None:
         raise HTTPException(status_code=401, detail="No reset code is waiting for that username.")
     expires = stored.expires_at
@@ -258,13 +288,13 @@ def reset_password(session: Session, username: str, code: str, password: str) ->
         expires = expires.replace(tzinfo=timezone.utc)
     if expires < datetime.now(timezone.utc) or not verify_password(code, stored.code_hash):
         raise HTTPException(status_code=401, detail="That reset code is invalid or has expired.")
-    user = session.get(UserRecord, username)
+    user = session.get(UserRecord, stored.username)
     if user is None or not user.active:
         raise HTTPException(status_code=401, detail="No account found for that username.")
     user.password_hash = hash_password(password)
     session.delete(stored)
     session.flush()
-    return {"detail": "Password updated. You can sign in now."}
+    return {"detail": "Password updated. You can sign in now.", "username": user.username}
 
 
 def set_language(session: Session, user: UserRecord, language: str) -> UserOut:
@@ -314,6 +344,10 @@ def admin_create_user(session: Session, payload: AdminUserCreate) -> UserOut:
     )
     session.add(record)
     session.flush()
+    if record.role == "beekeeper":
+        from backend.services.hive_bootstrap import provision_colony_for_beekeeper
+
+        provision_colony_for_beekeeper(session, record)
     return user_out(record)
 
 

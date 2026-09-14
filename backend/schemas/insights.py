@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class FeatureDriver(BaseModel):
+    feature: str
+    value: float
+    importance: float = 0.0
+    vs_typical: str = "near typical"
+    note: str = ""
 
 
 class HealthPrediction(BaseModel):
@@ -10,6 +18,10 @@ class HealthPrediction(BaseModel):
     features: dict[str, float]
     model_name: str
     trained_on: str
+    class_probabilities: dict[str, float] = Field(default_factory=dict)
+    reasons: list[str] = Field(default_factory=list)
+    drivers: list[FeatureDriver] = Field(default_factory=list)
+    status_meaning: str = ""
 
 
 class YieldForecast(BaseModel):

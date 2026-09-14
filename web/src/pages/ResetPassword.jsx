@@ -39,8 +39,8 @@ export default function ResetPassword() {
     try {
       await apiPost("/api/auth/reset-password", {
         username: username.trim(),
-        reset_code: code.trim(),
-        new_password: password,
+        code: code.trim(),
+        password,
       });
       navigate("/login", { replace: true });
     } catch (err) {
@@ -51,7 +51,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell kicker="RESET" title="Choose a new password" lead="Use the demo code from the previous step.">
+    <AuthShell kicker="RESET" title="Choose a new password" lead="Paste the 6-digit demo code from the previous screen. Sign in afterwards with your short username.">
       <form className="card auth-card" onSubmit={onSubmit} noValidate>
         {error && <Banner tone="bad">{error}</Banner>}
         <label htmlFor="username">Username</label>

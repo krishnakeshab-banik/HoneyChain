@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 SUPPORTED_LANGUAGES = ("en", "hi", "bn", "ta", "kn", "te", "mr")
@@ -60,8 +60,22 @@ class ForgotRequest(BaseModel):
 
 class ResetRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=80)
-    code: str = Field(..., min_length=4, max_length=12)
-    password: str = Field(..., min_length=8, max_length=120)
+    code: str | None = Field(default=None, min_length=4, max_length=12)
+    password: str | None = Field(default=None, min_length=8, max_length=120)
+    reset_code: str | None = Field(default=None, max_length=12)
+    new_password: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def resolve_aliases(self) -> "ResetRequest":
+        code = (self.code or self.reset_code or "").strip()
+        password = self.password or self.new_password or ""
+        if len(code) < 4:
+            raise ValueError("Reset code is required.")
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        self.code = code
+        self.password = password
+        return self
 
 
 class AdminUserCreate(BaseModel):

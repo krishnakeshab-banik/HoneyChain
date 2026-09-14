@@ -76,12 +76,15 @@ def computed_explanation(health: HealthPrediction, forecast: YieldForecast) -> s
     text = (
         f"This hive's live readings give a colony status of {health.status} "
         f"(model confidence {(health.confidence * 100):.1f}%). "
+        f"{health.status_meaning or ''} "
         f"Mean inside temperature {feats.get('mean_inside_temp', 0):.1f} °C, "
         f"mean humidity {feats.get('mean_humidity', 0):.1f}%, "
         f"weight change {feats.get('weight_slope', 0):.2f} kg in the recent window. "
         f"Latest measured hive weight {forecast.recent_weight_kg:.2f} kg; "
         f"short-horizon forecast {forecast.predicted_weight_kg:.2f} kg. "
     )
+    if health.reasons:
+        text += "Why: " + " ".join(health.reasons[:4]) + " "
     if forecast.predicted_honey_kg is not None:
         text += (
             f"Seasonal honey-yield estimate from the MSPB temperature/humidity model "
@@ -125,6 +128,7 @@ def explain_insights(health: HealthPrediction, forecast: YieldForecast, language
     prompt = (
         f"Write 2 short sentences in {lang} explaining these already-computed hive facts "
         "for a beekeeper. Do not invent extra numbers. Do not diagnose disease with certainty. "
+        "Say what the status means and which live readings pushed it that way. "
         "If humidity is high and weight gain is low, you may mention possible colony stress as a possibility only.\n\n"
         f"FACTS:\n{facts}"
     )

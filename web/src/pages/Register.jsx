@@ -68,7 +68,14 @@ export default function Register() {
       <form className="card auth-card" onSubmit={onSubmit} noValidate>
         {error && <Banner tone="bad">{error}</Banner>}
         <label htmlFor="username">{t("register.username")}</label>
-        <input id="username" value={form.username} onChange={(event) => setField("username", event.target.value)} />
+        <input
+          id="username"
+          value={form.username}
+          autoComplete="username"
+          placeholder="e.g. dhruv"
+          onChange={(event) => setField("username", event.target.value)}
+        />
+        <p className="muted">This is what you type at Sign in. Avoid spaces.</p>
         <FieldError message={fieldErrors.username} />
         <label htmlFor="display_name">{t("register.name")}</label>
         <input

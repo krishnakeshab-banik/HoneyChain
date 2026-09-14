@@ -25,6 +25,11 @@ def hives_for_user(session: Session, user: UserRecord) -> list[Hive]:
                 HiveAssignmentRecord.beekeeper_id == user.beekeeper_id
             )
         ).all()
+        if not hive_ids:
+            from backend.services.hive_bootstrap import provision_colony_for_beekeeper
+
+            hive = provision_colony_for_beekeeper(session, user)
+            return [hive] if hive else []
         return [get_hive(session, hive_id) for hive_id in hive_ids]
     return []
 

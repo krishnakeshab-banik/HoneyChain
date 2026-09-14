@@ -29,6 +29,9 @@ def test_insights_need_five_readings(client: TestClient) -> None:
     assert body["forecast"]["predicted_weight_kg"] > 0
     assert body["forecast"]["model_name"] == "LinearRegression"
     assert body["forecast"]["predicted_honey_kg"] is None or body["forecast"]["predicted_honey_kg"] >= 0
+    assert body["health"]["reasons"]
+    assert body["health"]["status_meaning"]
+    assert body["health"]["class_probabilities"]
 
 
 def test_insights_unknown_hive_404(client: TestClient) -> None:
