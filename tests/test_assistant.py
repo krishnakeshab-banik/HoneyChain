@@ -32,3 +32,17 @@ def test_assistant_refuses_unrelated_without_inventing(client: TestClient) -> No
     )
     assert response.status_code == 200
     assert "only help" in response.json()["answer"].lower() or response.json()["ai_used"] is True
+
+
+def test_assistant_hindi_question_does_not_say_disconnected(client: TestClient) -> None:
+    token = _token(client, "beekeeper", "Beekeeper123!")
+    response = client.post(
+        "/api/assistant/ask",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"question": "मेरे छत्ते की स्थिति क्या है?", "language": "en"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "not connected" not in body["answer"].lower()
+    assert body["language"] == "hi"
+    assert "IN-WB-001" in body["answer"] or body["ai_used"] is True

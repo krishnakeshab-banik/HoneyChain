@@ -28,8 +28,9 @@ export default function VoiceAgent() {
     setTranscript((prev) => [...prev, { role: "you", text: next }]);
     try {
       const result = await apiPost("/api/assistant/ask", { question: next, language });
+      const replyLang = (result.language || language).slice(0, 2);
       setTranscript((prev) => [...prev, { role: "honey", text: result.answer, label: result.ai_label }]);
-      speak(result.answer, language);
+      speak(result.answer, replyLang);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -53,7 +54,7 @@ export default function VoiceAgent() {
         <div className="voice-panel card" data-testid="voice-panel">
           <strong>Ask HoneyChain</strong>
           <p className="muted">
-            Answers use your own hives and harvests
+            Answers in English, Hindi, Bengali, Tamil, Kannada, Telugu, or Marathi — same language as your question
             {canSpeak() ? ", then read back aloud." : ". This browser cannot speak — read the captions."}
           </p>
           <div className="voice-log">

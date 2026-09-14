@@ -30,12 +30,14 @@ def ask(
     user: UserRecord = Depends(get_current_user),
 ) -> dict:
     context = assistant_service.user_context(session, user)
-    answer, ai_used, label = gemini_service.answer_grounded(payload.question, payload.language, context)
+    answer, ai_used, label, language = gemini_service.answer_grounded(
+        payload.question, payload.language, context
+    )
     return {
         "answer": answer,
         "ai_used": ai_used,
         "ai_label": label,
-        "language": payload.language,
+        "language": language,
     }
 
 
