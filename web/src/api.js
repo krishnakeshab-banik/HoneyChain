@@ -1,4 +1,4 @@
-const API = "";
+const API = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const TOKEN_KEY = "honeychain_token";
 const REFRESH_KEY = "honeychain_refresh";
 const QUEUE_KEY = "honeychain_offline_queue";
