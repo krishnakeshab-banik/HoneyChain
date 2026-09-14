@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from backend.models.package import PackageRecord
 from backend.schemas.package import PackageCreate, PackageOut
 
 QR_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "qr"
+LOCAL_VERIFY = "http://127.0.0.1:5173/verify"
 
 
 def _to_out(record: PackageRecord) -> PackageOut:
@@ -23,6 +25,32 @@ def _to_out(record: PackageRecord) -> PackageOut:
         qr_image_path=record.qr_image_path,
         created_at=record.created_at,
     )
+
+
+def _is_local_url(url: str) -> bool:
+    lowered = (url or "").lower()
+    return "127.0.0.1" in lowered or "localhost" in lowered
+
+
+def public_verify_base(request=None, preferred: str | None = None) -> str:
+    """Origin encoded into QR codes. Never prefer localhost when a public host is known."""
+    env = (
+        os.environ.get("HONEYCHAIN_PUBLIC_ORIGIN")
+        or os.environ.get("RENDER_EXTERNAL_URL")
+        or ""
+    ).strip().rstrip("/")
+    if env:
+        return f"{env}/verify" if not env.endswith("/verify") else env
+    if request is not None:
+        host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+        if host and not _is_local_url(host):
+            proto = request.headers.get("x-forwarded-proto") or getattr(request.url, "scheme", None) or "https"
+            if "onrender.com" in host or "vercel.app" in host:
+                proto = "https"
+            return f"{proto}://{host}/verify"
+    if preferred and not _is_local_url(preferred):
+        return preferred.rstrip("/") if preferred.rstrip("/").endswith("/verify") else f"{preferred.rstrip('/')}/verify"
+    return LOCAL_VERIFY
 
 
 def _qr_url(base_url: str, package_id: str) -> str:
@@ -40,7 +68,7 @@ def _write_qr_png(package_id: str, url: str) -> Path:
     return path
 
 
-def create_package(session: Session, payload: PackageCreate) -> PackageOut:
+def create_package(session: Session, payload: PackageCreate, request=None) -> PackageOut:
     if session.get(PackageRecord, payload.package_id) is not None:
         raise HTTPException(
             status_code=409,
@@ -60,7 +88,8 @@ def create_package(session: Session, payload: PackageCreate) -> PackageOut:
             ),
         )
 
-    qr_reference = _qr_url(payload.verify_base_url, payload.package_id)
+    base = public_verify_base(request, payload.verify_base_url)
+    qr_reference = _qr_url(base, payload.package_id)
     qr_path = _write_qr_png(payload.package_id, qr_reference)
     record = PackageRecord(
         package_id=payload.package_id,
@@ -74,17 +103,21 @@ def create_package(session: Session, payload: PackageCreate) -> PackageOut:
     return _to_out(record)
 
 
-def list_packages(session: Session) -> list[PackageOut]:
+def list_packages(session: Session, request=None) -> list[PackageOut]:
     rows = session.scalars(select(PackageRecord).order_by(PackageRecord.package_id)).all()
-    out = [_to_out(ensure_qr_file(row)) for row in rows]
+    base = public_verify_base(request)
+    out = [_to_out(ensure_qr_file(row, base)) for row in rows]
     session.flush()
     return out
 
 
-def ensure_qr_file(record: PackageRecord, base_url: str = "http://127.0.0.1:5173/verify") -> PackageRecord:
-    """Rewrite the QR to the verify page and recreate the PNG if it is missing."""
+def ensure_qr_file(record: PackageRecord, base_url: str | None = None) -> PackageRecord:
+    """Recreate the PNG if missing, and upgrade localhost QR targets to the live origin."""
 
-    target = _qr_url(base_url, record.package_id)
+    base = base_url or LOCAL_VERIFY
+    target = _qr_url(base, record.package_id)
+    if _is_local_url(target) and record.qr_reference and not _is_local_url(record.qr_reference):
+        target = record.qr_reference
     path = Path(record.qr_image_path) if record.qr_image_path else QR_DIR / f"{record.package_id}.png"
     if record.qr_reference != target or not path.is_file():
         written = _write_qr_png(record.package_id, target)
@@ -93,11 +126,11 @@ def ensure_qr_file(record: PackageRecord, base_url: str = "http://127.0.0.1:5173
     return record
 
 
-def get_package(session: Session, package_id: str) -> PackageOut:
+def get_package(session: Session, package_id: str, request=None) -> PackageOut:
     record = session.get(PackageRecord, package_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Package '{package_id}' does not exist.")
-    ensure_qr_file(record)
+    ensure_qr_file(record, public_verify_base(request))
     session.flush()
     return _to_out(record)
 

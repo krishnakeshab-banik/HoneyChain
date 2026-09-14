@@ -108,6 +108,17 @@ def test_get_missing_package_404(client: TestClient) -> None:
     assert client.get("/api/packages/NOPE").status_code == 404
 
 
+def test_qr_uses_forwarded_public_host(client: TestClient, post_reading) -> None:
+    package_id = _ready_package(client, post_reading, "PK-LIVEHOST")
+    listed = client.get(
+        "/api/packages",
+        headers={"x-forwarded-host": "honeychain-y8j6.onrender.com", "x-forwarded-proto": "https"},
+    )
+    assert listed.status_code == 200
+    row = next(item for item in listed.json() if item["package_id"] == package_id)
+    assert row["qr_reference"].startswith("https://honeychain-y8j6.onrender.com/verify?package_id=")
+
+
 def test_delete_package(client: TestClient, post_reading) -> None:
     _ready_package(client, post_reading, "PK-DEL")
     assert client.delete("/api/packages/PK-DEL").status_code == 204
