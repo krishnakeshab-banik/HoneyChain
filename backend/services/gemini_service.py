@@ -12,13 +12,11 @@ from backend.schemas.insights import HealthPrediction, YieldForecast
 
 logger = logging.getLogger("honeychain")
 
+# Auth keys (AQ.) are rejected by retired model ids. Current flash models first.
 GEMINI_MODELS = (
+    "gemini-3.5-flash",
+    "gemini-3.7-flash",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-001",
-    "gemini-flash-latest",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
 )
 
 LANG_NAMES = {
@@ -97,7 +95,23 @@ def computed_explanation(health: HealthPrediction, forecast: YieldForecast) -> s
 _gemini_blocked = False
 
 
-def _generate(prompt: str, timeout: float = 6.0) -> str | None:
+def _candidate_text(data: dict) -> str:
+    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    chunks = [item.get("text", "") for item in parts if item.get("text") and not item.get("thought")]
+    return "".join(chunks).strip()
+
+
+def _generate(prompt: str, timeout: float = 12.0) -> str | None:
+    return _generate_payload(
+        {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"thinkingConfig": {"thinkingLevel": "LOW"}},
+        },
+        timeout,
+    )
+
+
+def _generate_payload(payload: dict, timeout: float) -> str | None:
     global _gemini_blocked
     key = api_key()
     if not key:
@@ -105,29 +119,30 @@ def _generate(prompt: str, timeout: float = 6.0) -> str | None:
         return None
     if _gemini_blocked:
         return None
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
     headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
+    auth_failures = 0
     last_status = None
-    for model in GEMINI_MODELS[:2]:
+    for model in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
             response = httpx.post(url, headers=headers, json=payload, timeout=timeout)
-            last_status = response.status_code
-            if response.status_code in (401, 403):
-                _gemini_blocked = True
-                logger.warning("Assistant: Gemini key rejected (HTTP %s). Using local answers.", response.status_code)
-                return None
-            if response.status_code >= 400:
-                logger.warning("Assistant: model %s returned HTTP %s", model, response.status_code)
-                continue
-            data = response.json()
-            parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-            text = "".join(item.get("text", "") for item in parts).strip()
-            if text:
-                return text
         except Exception:
             logger.warning("Assistant: model %s request failed", model, exc_info=False)
             continue
+        last_status = response.status_code
+        if response.status_code in (401, 403):
+            auth_failures += 1
+            logger.warning("Assistant: model %s returned HTTP %s", model, response.status_code)
+            if auth_failures >= 2:
+                _gemini_blocked = True
+                return None
+            continue
+        if response.status_code >= 400:
+            logger.warning("Assistant: model %s returned HTTP %s", model, response.status_code)
+            continue
+        text = _candidate_text(response.json())
+        if text:
+            return text
     logger.warning("Assistant: no Gemini model returned text (last HTTP %s)", last_status)
     return None
 
@@ -150,15 +165,14 @@ def answer_grounded(question: str, language: str, context: str) -> tuple[str, bo
     lang = detect_language(question, language)
     lang_name = LANG_NAMES.get(lang, "English")
     prompt = (
-        f"You are HoneyChain, a working assistant inside the HoneyChain honey-traceability app. "
-        f"Reply entirely in {lang_name}. Be concise and practical.\n"
-        "You MAY answer any question about this product: roles (beekeeper, officer, lab, admin, consumer), "
-        "login, harvest logging, lab inspection, oracle 10% weight check, ledger hash-chain, QR / consumer verify, "
-        "CloneWatch, Market Linkage, insights/models, guided tour, languages, and this user's own live records.\n"
-        "Use the CONTEXT for this user's numbers. Never invent statistics. "
-        "If a number is missing from context, say it is not yet available.\n"
-        "If asked for another person's private data, refuse.\n"
-        "If the question is unrelated to HoneyChain, beekeeping, or this app, refuse politely in the same language.\n\n"
+        f"You are HoneyChain, the assistant inside this honey-traceability app. "
+        f"Reply entirely in {lang_name}. Answer the question that was asked, in 2 to 5 sentences.\n"
+        "Cover how the product works when asked what this is, what a role does, or how a step works: "
+        "beekeeper, KVIC field officer, lab inspector, admin, consumer verify, harvest, lab pass/fail, "
+        "the 10% hive-scale weight check, ledger seal, QR, CloneWatch, market, insights, and the guided tour.\n"
+        "Use CONTEXT for this user's own numbers. Never invent statistics or another person's private data. "
+        "If a number is not in CONTEXT, say it is not available yet.\n"
+        "Refuse only when the question is unrelated to honey, beekeeping, or this app.\n\n"
         f"CONTEXT:\n{context}\n\nQUESTION:\n{question}"
     )
     text = _generate(prompt)
@@ -189,40 +203,21 @@ def observe_image(image_b64: str, mime: str, language: str = "en") -> tuple[str,
 
 
 def _generate_image(prompt: str, image_b64: str, mime: str) -> str | None:
-    global _gemini_blocked
-    key = api_key()
-    if not key:
-        return None
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {"mime_type": mime, "data": image_b64}},
-                ]
-            }
-        ]
-    }
-    headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
-    if _gemini_blocked:
-        return None
-    for model in GEMINI_MODELS[:2]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        try:
-            response = httpx.post(url, headers=headers, json=payload, timeout=6.0)
-            if response.status_code in (401, 403):
-                _gemini_blocked = True
-                return None
-            if response.status_code >= 400:
-                continue
-            data = response.json()
-            parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-            text = "".join(item.get("text", "") for item in parts).strip()
-            if text:
-                return text
-        except Exception:
-            continue
-    return None
+    return _generate_payload(
+        {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime, "data": image_b64}},
+                    ],
+                }
+            ],
+            "generationConfig": {"thinkingConfig": {"thinkingLevel": "LOW"}},
+        },
+        12.0,
+    )
 
 
 _STRONG_RE = re.compile(
