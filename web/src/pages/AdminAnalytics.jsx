@@ -26,7 +26,9 @@ export default function AdminAnalytics() {
 
   return (
     <div>
-      <PageHeader kicker={t("analytics.kicker")} title={t("analytics.title")} purpose={t("analytics.purpose")} />
+      <div data-tour="analytics">
+        <PageHeader kicker={t("analytics.kicker")} title={t("analytics.title")} purpose={t("analytics.purpose")} />
+      </div>
       {error && <Banner tone="bad">{error}</Banner>}
       {!data && !error && <Loading label={t("analytics.loading")} />}
       {data && (

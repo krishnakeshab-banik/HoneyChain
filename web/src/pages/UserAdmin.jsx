@@ -42,6 +42,7 @@ export default function UserAdmin() {
 
       <form
         className="card"
+        data-tour="admin-users"
         onSubmit={async (event) => {
           event.preventDefault();
           setSaving(true);

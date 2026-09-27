@@ -27,7 +27,7 @@ export default function VoiceAgent() {
     setError("");
     setTranscript((prev) => [...prev, { role: "you", text: next }]);
     try {
-      const result = await apiPost("/api/assistant/ask", { question: next, language });
+      const result = await apiPost("/api/assistant/ask", { question: next, language }, { timeoutMs: 20000, skipQueue: true });
       const replyLang = (result.language || language).slice(0, 2);
       setTranscript((prev) => [...prev, { role: "honey", text: result.answer, label: result.ai_label }]);
       speak(result.answer, replyLang);

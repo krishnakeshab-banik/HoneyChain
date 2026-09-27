@@ -27,12 +27,14 @@ export default function CloneWatch() {
   }));
 
   return (
-    <div data-tour="clonewatch">
-      <PageHeader
-        kicker={t("clone.kicker")}
-        title={t("clone.title")}
-        purpose={t("clone.purpose")}
-      />
+    <div>
+      <div data-tour="clonewatch">
+        <PageHeader
+          kicker={t("clone.kicker")}
+          title={t("clone.title")}
+          purpose={t("clone.purpose")}
+        />
+      </div>
       {loading && <Loading label="Loading CloneWatch flags…" />}
       {error && (
         <Banner tone="bad">

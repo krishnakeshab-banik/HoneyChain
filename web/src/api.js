@@ -216,8 +216,8 @@ export function apiSend(method, path, payload) {
   return apiRequest(method, path, payload);
 }
 
-export function apiPost(path, payload) {
-  return apiRequest("POST", path, payload);
+export function apiPost(path, payload, options) {
+  return apiRequest("POST", path, payload, options);
 }
 
 export function qrImageUrl(packageId) {

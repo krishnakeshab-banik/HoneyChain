@@ -35,6 +35,7 @@ export default function Alerts() {
 
       <form
         className="card"
+        data-tour="alerts"
         onSubmit={async (event) => {
           event.preventDefault();
           setSaving(true);

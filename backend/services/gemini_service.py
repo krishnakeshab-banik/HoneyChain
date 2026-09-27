@@ -94,19 +94,29 @@ def computed_explanation(health: HealthPrediction, forecast: YieldForecast) -> s
     return text
 
 
-def _generate(prompt: str, timeout: float = 20.0) -> str | None:
+_gemini_blocked = False
+
+
+def _generate(prompt: str, timeout: float = 6.0) -> str | None:
+    global _gemini_blocked
     key = api_key()
     if not key:
         logger.warning("Assistant: GEMINI_API_KEY is not set.")
         return None
+    if _gemini_blocked:
+        return None
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
     last_status = None
-    for model in GEMINI_MODELS:
+    for model in GEMINI_MODELS[:2]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
             response = httpx.post(url, headers=headers, json=payload, timeout=timeout)
             last_status = response.status_code
+            if response.status_code in (401, 403):
+                _gemini_blocked = True
+                logger.warning("Assistant: Gemini key rejected (HTTP %s). Using local answers.", response.status_code)
+                return None
             if response.status_code >= 400:
                 logger.warning("Assistant: model %s returned HTTP %s", model, response.status_code)
                 continue
@@ -179,6 +189,7 @@ def observe_image(image_b64: str, mime: str, language: str = "en") -> tuple[str,
 
 
 def _generate_image(prompt: str, image_b64: str, mime: str) -> str | None:
+    global _gemini_blocked
     key = api_key()
     if not key:
         return None
@@ -193,10 +204,15 @@ def _generate_image(prompt: str, image_b64: str, mime: str) -> str | None:
         ]
     }
     headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
-    for model in GEMINI_MODELS:
+    if _gemini_blocked:
+        return None
+    for model in GEMINI_MODELS[:2]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         try:
-            response = httpx.post(url, headers=headers, json=payload, timeout=20.0)
+            response = httpx.post(url, headers=headers, json=payload, timeout=6.0)
+            if response.status_code in (401, 403):
+                _gemini_blocked = True
+                return None
             if response.status_code >= 400:
                 continue
             data = response.json()
@@ -209,20 +225,130 @@ def _generate_image(prompt: str, image_b64: str, mime: str) -> str | None:
     return None
 
 
-_PRODUCT_RE = re.compile(
-    r"hive|harvest|batch|honey|weight|humidity|market|ledger|qr|tour|login|colony|"
-    r"insight|alert|verify|oracle|lab|officer|beekeeper|package|clone|trace|"
-    r"how|what|help|hello|hi|namaste|namaskar",
+_STRONG_RE = re.compile(
+    r"hive|harvest|batch|honey|weight|humidity|market|ledger|qr|tour|colony|"
+    r"insight|alert|verify|oracle|lab|officer|beekeeper|package|clone|trace|model",
     re.I,
 )
-_OFF_TOPIC_RE = re.compile(r"cricket|world cup|bitcoin|lottery|movie", re.I)
+_ABOUT_RE = re.compile(r"\b(what|about|this|help|hello|hi|who|how)\b|namaste|namaskar", re.I)
+_OFF_TOPIC_RE = re.compile(r"cricket|world cup|bitcoin|lottery|movie|weather|paris|joke|football", re.I)
+_HIVE_LINE = re.compile(r"^- ([A-Za-z0-9-]+) \(([^)]+)\): (.+)$", re.M)
+_HARVEST_LINE = re.compile(r"^- (HV-\S+) hive (\S+) ([0-9.]+) kg status (\S+)", re.M)
+
+_ABOUT = {
+    "beekeeper": (
+        "HoneyChain follows your honey from the hive scale to a jar a buyer can check. "
+        "You watch your own colonies, log a harvest, and see buyer prices. "
+        "An officer groups that harvest into a draft. The lab must pass it. "
+        "The batch is sealed only if the claimed kilograms stay within 10% of the hive scale. "
+        "The jar then gets a package ID and QR. Anyone can open Verify with no account."
+    ),
+    "officer": (
+        "HoneyChain is the KVIC field record from hive to jar. "
+        "You see only your cluster. Group a beekeeper's harvest into a draft batch and leave the lab result pending. "
+        "After the lab records a pass, seal the batch only if the claimed kilograms stay within 10% of the hive scale. "
+        "That issues a package ID and QR. Ledger Integrity shows whether the seal still matches. "
+        "CloneWatch lists jars scanned too often or too far apart."
+    ),
+    "lab": (
+        "HoneyChain is the lab desk for draft honey batches. "
+        "You do not create batches and you do not seal them. "
+        "Open a waiting batch, enter moisture % and purity %, then pass or fail. "
+        "A fail blocks the officer from sealing that batch. A pass unlocks the 10% weight check."
+    ),
+    "admin": (
+        "HoneyChain is the KVIC system of record from hive to jar. "
+        "You register hives, create officer and lab accounts, and can run the same draft, lab, and seal steps. "
+        "A batch seals only after a lab pass and only if the claimed kilograms stay within 10% of the hive scale. "
+        "Ledger Integrity can show a broken chain with Tamper with first block, then Reset tamper. "
+        "The model card's colony-health accuracy is about 40% on the held-out test. Map pins are region centers, not live GPS."
+    ),
+}
+
+
+def _context_field(context: str, name: str) -> str:
+    match = re.search(rf"^{re.escape(name)}: (.+)$", context, re.M)
+    return match.group(1).strip() if match else ""
+
+
+def _hive_answer(context: str, language: str) -> str:
+    hives = _HIVE_LINE.findall(context)
+    if not hives:
+        lead = "No hives are assigned to this account yet."
+        if language == "hi":
+            lead = "इस खाते पर अभी कोई छत्ता असाइन नहीं है।"
+        return lead
+    lines = [f"- {hive_id} ({name}): {detail}" for hive_id, name, detail in hives]
+    count = len(hives)
+    if language == "hi":
+        lead = f"आपको {count} छत्ते दिख रहे हैं।"
+    else:
+        lead = f"You can see {count} hive." if count == 1 else f"You can see {count} hives."
+    return lead + " Colony status and the yield forecast are on the Insights page.\n" + "\n".join(lines)
+
+
+def _harvest_answer(context: str) -> str:
+    summary = _context_field(context, "Harvests visible")
+    rows = _HARVEST_LINE.findall(context)
+    if not summary and not rows:
+        return "No harvests are visible on this account yet."
+    lines = [f"- {harvest_id} on {hive_id}: {kg} kg, status {status}" for harvest_id, hive_id, kg, status in rows[:8]]
+    body = summary or "Harvests on this account:"
+    if lines:
+        body += "\n" + "\n".join(lines)
+    return body
 
 
 def _fallback_answer(question: str, context: str, language: str = "en") -> str:
     lang = language if language in FALLBACK_LEAD else "en"
-    indic = lang != "en"
-    if _OFF_TOPIC_RE.search(question) and not _PRODUCT_RE.search(question):
+    if _OFF_TOPIC_RE.search(question) and not _STRONG_RE.search(question):
         return REFUSE[lang]
-    if not indic and not _PRODUCT_RE.search(question):
+    if lang == "en" and not _STRONG_RE.search(question) and not _ABOUT_RE.search(question):
         return REFUSE[lang]
-    return f"{FALLBACK_LEAD[lang]}\n\n{context}"
+
+    role = _context_field(context, "Role") or "beekeeper"
+    who = _context_field(context, "Signed-in user")
+    q = question.lower()
+
+    def asks(*words: str) -> bool:
+        return any(word in q for word in words)
+
+    if asks("hive", "colony", "temperature", "humidity", "weight", "छत्त"):
+        text = _hive_answer(context, lang)
+    elif asks("harvest", "फसल"):
+        text = _harvest_answer(context)
+    elif asks("oracle", "10%", "10 percent", "declared"):
+        text = (
+            "The weight check allows a seal only when the batch's claimed kilograms stay within 10% of the kilograms logged on the hive scale. "
+            "Run it on Batch Review after the lab has recorded a pass."
+        )
+    elif asks("lab", "moisture", "purity", "inspector"):
+        text = (
+            "The lab desk lists draft batches waiting for inspection. "
+            "Enter moisture and purity, then pass or fail. A fail blocks the seal. A pass lets the officer run the 10% weight check."
+        )
+    elif asks("ledger", "hash", "tamper"):
+        text = (
+            "Ledger Integrity recalculates the seal every time you open it. "
+            "Green means every sealed batch still matches. Red means a stored number was changed. "
+            "Only an admin can use Tamper with first block and Reset tamper."
+        )
+    elif asks("clone", "counterfeit", "fake", "scan"):
+        text = "CloneWatch lists jars scanned too many times, scans too far apart to be the same jar, and batches that failed the 10% weight check."
+    elif asks("qr", "verify", "package"):
+        text = "A sealed batch gets a package ID and QR. Anyone can open Verify and check that ID with no account. The page recomputes the ledger from the live rows."
+    elif asks("market", "price", "buyer", "demand"):
+        text = "Market Linkage shows standing buyer demand separately from example listings, plus recent verified sale prices."
+    elif asks("tour", "walkthrough"):
+        text = "Open your name menu and choose Help / Tour. The walkthrough highlights the real controls for your role and reads each step aloud."
+    elif asks("model", "accuracy", "insight"):
+        text = "The colony-health model card shows about 40% accuracy on the held-out test split. Quote that page rather than a higher number. Live readings for your hives are separate from that score."
+    elif asks("who", "role", "login", "sign"):
+        text = f"You are signed in as {who or 'this account'}, role {role}."
+    else:
+        text = _ABOUT.get(role, _ABOUT["beekeeper"])
+        if who:
+            text = f"You are signed in as {who}, role {role}.\n\n" + text
+    if lang == "hi" and not text.startswith("आप"):
+        return "HoneyChain आपके रिकॉर्ड से यह बता रहा है।\n\n" + text
+    return text

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiGet, apiSend } from "../api";
 import { useAuth } from "../auth";
+import TourOffer from "../components/TourOffer";
 import { Banner, DataTable, Loading, PageHeader } from "../components/Ui";
 import { welcomeLine } from "../greeting";
 
@@ -42,6 +43,7 @@ export default function LabDesk() {
         title={welcomeLine(user?.display_name, t("lab.title"))}
         purpose={t("lab.purpose")}
       />
+      <TourOffer />
       {loading && <Loading label={t("lab.loading")} />}
       {error && (
         <div data-testid="page-error">
@@ -56,23 +58,26 @@ export default function LabDesk() {
         </div>
       )}
 
-      <h2>{t("lab.queue")}</h2>
-      {queue.length === 0 && !loading ? (
-        <Banner tone="info">{t("lab.empty")}</Banner>
-      ) : (
-        <ul>
-          {queue.map((id) => (
-            <li key={id}>
-              <button className="ghost" type="button" onClick={() => setForm((prev) => ({ ...prev, batch_id: id }))}>
-                {id}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div data-tour="lab-queue">
+        <h2>{t("lab.queue")}</h2>
+        {queue.length === 0 && !loading ? (
+          <Banner tone="info">{t("lab.empty")}</Banner>
+        ) : (
+          <ul>
+            {queue.map((id) => (
+              <li key={id}>
+                <button className="ghost" type="button" onClick={() => setForm((prev) => ({ ...prev, batch_id: id }))}>
+                  {id}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <form
         className="card"
+        data-tour="lab-form"
         onSubmit={async (event) => {
           event.preventDefault();
           setSaving(true);
@@ -161,22 +166,24 @@ export default function LabDesk() {
         </div>
       </form>
 
-      <h2>{t("lab.history")}</h2>
-      {results.length === 0 && !loading ? (
-        <Banner tone="info">{t("common.empty")}</Banner>
-      ) : (
-        <DataTable
-          rows={results}
-          columns={[
-            { key: "result_id", label: "ID" },
-            { key: "batch_id", label: "Batch" },
-            { key: "moisture_pct", label: t("lab.moisture") },
-            { key: "purity_pct", label: t("lab.purity") },
-            { key: "result", label: t("lab.result") },
-            { key: "inspector", label: "Inspector" },
-          ]}
-        />
-      )}
+      <div data-tour="lab-history">
+        <h2>{t("lab.history")}</h2>
+        {results.length === 0 && !loading ? (
+          <Banner tone="info">{t("common.empty")}</Banner>
+        ) : (
+          <DataTable
+            rows={results}
+            columns={[
+              { key: "result_id", label: "ID" },
+              { key: "batch_id", label: "Batch" },
+              { key: "moisture_pct", label: t("lab.moisture") },
+              { key: "purity_pct", label: t("lab.purity") },
+              { key: "result", label: t("lab.result") },
+              { key: "inspector", label: "Inspector" },
+            ]}
+          />
+        )}
+      </div>
     </div>
   );
 }

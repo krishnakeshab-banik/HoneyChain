@@ -516,12 +516,14 @@ th, td {
   bottom: 16px;
   left: auto;
   top: auto;
-  max-width: 340px;
+  max-width: 420px;
   max-height: calc(100vh - 24px);
   overflow: auto;
   pointer-events: auto;
   z-index: 91;
 }
+.tour-card h3 { margin: 0 0 8px; font-size: 1.15rem; }
+.tour-card p { line-height: 1.45; }
 .tour-offer { margin: 16px 0; }
 .notice-list { display: grid; gap: 10px; margin: 16px 0; }
 .notice-card strong { display: block; margin: 4px 0; }

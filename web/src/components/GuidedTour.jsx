@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { TOURS, tourCopy, tourStorageKey } from "../tourScripts";
+import { TOURS, TOUR_LABEL, tourCopy, tourStorageKey } from "../tourScripts";
 import { useAuth } from "../auth";
 import { canSpeak, speak, stopSpeaking } from "../speech";
 
@@ -13,6 +13,7 @@ export function TourProvider({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [script, setScript] = useState([]);
+  const [persona, setPersona] = useState("");
   const [index, setIndex] = useState(-1);
   const [box, setBox] = useState(null);
   const [speechNote, setSpeechNote] = useState("");
@@ -47,6 +48,7 @@ export function TourProvider({ children }) {
       }
       setIndex(-1);
       setScript([]);
+      setPersona("");
       setBox(null);
       setSpeechNote("");
       stopSpeaking();
@@ -56,10 +58,12 @@ export function TourProvider({ children }) {
 
   const startTour = useCallback(
     (persona) => {
-      const next = TOURS[persona] || TOURS[role];
+      const who = persona || role;
+      const next = TOURS[who];
       if (!next?.length) {
         return;
       }
+      setPersona(who);
       setScript(next);
       setIndex(0);
       setBox(null);
@@ -126,7 +130,7 @@ export function TourProvider({ children }) {
           )}
           <div className="tour-card card" data-testid="tour-card">
             <p className="page-kicker">
-              Step {index + 1} of {script.length}
+              {TOUR_LABEL[persona] || "TOUR"} · Step {index + 1} of {script.length}
             </p>
             <h3 data-testid="tour-title">{copy.title}</h3>
             <p data-testid="tour-body">{copy.body}</p>

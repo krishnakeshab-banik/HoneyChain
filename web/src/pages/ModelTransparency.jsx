@@ -14,12 +14,14 @@ export default function ModelTransparency() {
   }, []);
 
   return (
-    <div data-tour="model">
-      <PageHeader
-        kicker="MODEL TRANSPARENCY"
-        title="Held-out MSPB evaluation"
-        purpose="These scores come from a 25% test split the served models never trained on. MSPB is an international field proxy until an Indian labelled set exists."
-      />
+    <div>
+      <div data-tour="model">
+        <PageHeader
+          kicker="MODEL TRANSPARENCY"
+          title="Held-out MSPB evaluation"
+          purpose="These scores come from a 25% test split the served models never trained on. MSPB is an international field proxy until an Indian labelled set exists."
+        />
+      </div>
       {error && <Banner tone="bad">{error}</Banner>}
       {!body && !error && <Loading label="Loading held-out metrics…" />}
       {body && (

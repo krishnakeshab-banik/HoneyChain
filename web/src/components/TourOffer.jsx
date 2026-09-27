@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../auth";
 import { useTour } from "./GuidedTour";
-import { TOURS, tourStorageKey } from "../tourScripts";
+import { TOURS, TOUR_OFFER, tourStorageKey } from "../tourScripts";
 
 export default function TourOffer() {
   const { user, role } = useAuth();
@@ -13,10 +13,13 @@ export default function TourOffer() {
   if (window.localStorage.getItem(tourStorageKey(user.username))) {
     return null;
   }
+  const offer = TOUR_OFFER[role];
   return (
     <div className="card tour-offer">
-      <strong>Take a short walkthrough?</strong>
-      <p className="muted">We will highlight the real buttons on your own screens and read each step aloud in the language you selected. You can skip at any time.</p>
+      <strong>{offer?.title || "Take a short walkthrough?"}</strong>
+      <p className="muted">
+        {offer?.body} Each step highlights the control on that screen and can be read aloud. Skip any time.
+      </p>
       <div className="row">
         <button className="primary" type="button" onClick={() => startTour(role)}>
           Start tour

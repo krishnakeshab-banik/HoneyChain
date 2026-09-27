@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiGet, apiPost, apiSend } from "../api";
 import { useAuth } from "../auth";
+import TourOffer from "../components/TourOffer";
 import { Banner, HiveSelect, Loading, Metric, PageHeader } from "../components/Ui";
 import { welcomeLine } from "../greeting";
 
@@ -151,6 +152,7 @@ export default function Overview({ canRegister = true }) {
         title={welcomeLine(user?.display_name, "here's the live hive picture")}
         purpose="See the latest hive telemetry. Numbers refresh from the API every five seconds."
       />
+      {canRegister && <TourOffer />}
       <h2 className="sr-only">From hive signals to trusted honey.</h2>
 
       {loading && <Loading label="Loading hive list…" />}
@@ -219,7 +221,7 @@ export default function Overview({ canRegister = true }) {
       {canRegister && <h2>Register a hive</h2>}
       {canRegister && <p className="purpose">Creates a hive via POST /api/hives, writes starter scale readings, and can assign it to a beekeeper so harvest logging works immediately.</p>}
       {canRegister && (
-      <form className="card" onSubmit={registerHive}>
+      <form className="card" data-tour="admin-register" onSubmit={registerHive}>
         <div className="grid-2">
           <div>
             <label htmlFor="assign_beekeeper">Assign to beekeeper</label>

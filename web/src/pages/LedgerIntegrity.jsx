@@ -51,12 +51,14 @@ export default function LedgerIntegrity() {
   }
 
   return (
-    <div data-tour="ledger">
-      <SectionHeading
-        kicker="LEDGER INTEGRITY"
-        title="Live hash-chain verification"
-        purpose="Integrity is recomputed from the stored blocks and the live batch row every time this page loads. It is never a stored tick."
-      />
+    <div>
+      <div data-tour="ledger">
+        <SectionHeading
+          kicker="LEDGER INTEGRITY"
+          title="Live hash-chain verification"
+          purpose="Integrity is recomputed from the stored blocks and the live batch row every time this page loads. It is never a stored tick."
+        />
+      </div>
       {loading && <Loading label="Recomputing ledger…" />}
       {error && (
         <Banner tone="bad">
@@ -71,7 +73,7 @@ export default function LedgerIntegrity() {
         <Banner tone="bad">Broken from block {integrity.broken_indexes.join(", ")} onward.</Banner>
       )}
       {role === "admin" && (
-        <div className="row">
+        <div className="row" data-tour="tamper">
           <button className="primary" type="button" disabled={busy} onClick={() => runTamper("/api/ledger/tamper-test")}>
             Tamper with first block
           </button>
